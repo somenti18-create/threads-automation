@@ -1,8 +1,21 @@
-import subprocess
 import json
-from dotenv import dotenv_values
+import os
+import anthropic
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
-config = dotenv_values(".env")
+_claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+def _call_claude(prompt):
+    msg = _claude.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return msg.content[0].text.strip()
 
 PROFILE = """
 名前: 小野寺壮史 / POLYNK
@@ -43,12 +56,7 @@ def generate_post(template):
 
 投稿文だけを出力してください。前置きや説明は不要です。"""
 
-    result = subprocess.run(
-        ["claude", "-p", prompt],
-        capture_output=True,
-        text=True
-    )
-    return result.stdout.strip()
+    return _call_claude(prompt)
 
 def generate_posts():
     posts = []

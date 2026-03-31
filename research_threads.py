@@ -1,8 +1,23 @@
-import subprocess
 import json
-import time
 import re
+import os
+import anthropic
 from datetime import datetime
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+_claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+def _call_claude(prompt):
+    msg = _claude.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return msg.content[0].text.strip()
 
 # PDCAエンジンから最新指示を取得
 def get_pdca_instructions():
@@ -55,10 +70,6 @@ def scrape_threads(keyword, max_posts=8):
 
 def generate_post_from_research(research_posts, post_index):
     """リサーチ結果を元にClaudeで投稿文を生成"""
-    if not research_posts:
-        return None
-
-    samples = "\n---\n".join([p["text"] for p in research_posts[:5]])
     post_type_info = POST_TYPES[post_index % len(POST_TYPES)]
     style = f"【{post_type_info['label']}】{post_type_info['description']}"
 
@@ -69,12 +80,21 @@ def generate_post_from_research(research_posts, post_index):
 {pdca_instructions}
 """ if pdca_instructions else ""
 
-    prompt = f"""あなたはSNSマーケターのコピーライターです。
-
-以下は今日Threadsで反応が取れていた投稿のサンプルです：
+    if research_posts:
+        samples = "\n---\n".join([p["text"] for p in research_posts[:5]])
+        research_section = f"""以下は今日Threadsで反応が取れていた投稿のサンプルです：
 
 【リサーチした投稿サンプル】
 {samples}
+
+上記サンプルの「語り口・構成・リズム」を参考にしつつ、"""
+    else:
+        research_section = "あなたの知識と経験をもとに、"
+
+    prompt = f"""あなたはSNSマーケターのコピーライターです。
+
+{research_section}
+このプロフィールの人物として自然なThreads投稿文を1つ作成してください。
 
 【投稿者のプロフィール】
 {PROFILE}
@@ -82,9 +102,6 @@ def generate_post_from_research(research_posts, post_index):
 【今回の投稿スタイル】
 {style}
 {pdca_section}
-上記サンプルの「語り口・構成・リズム」を参考にしつつ、
-このプロフィールの人物として自然なThreads投稿文を1つ作成してください。
-
 条件：
 - 140〜300文字
 - 宣伝臭なし、価値・共感・ストーリー重視
@@ -94,11 +111,7 @@ def generate_post_from_research(research_posts, post_index):
 
 投稿文だけ出力してください。"""
 
-    result = subprocess.run(
-        ["claude", "-p", prompt],
-        capture_output=True, text=True, timeout=60
-    )
-    return result.stdout.strip()
+    return _call_claude(prompt)
 
 def main(post_count=10):
     print("=" * 50)
@@ -114,20 +127,12 @@ def main(post_count=10):
         print(f"  {keyword}: {len(posts)}件取得")
 
     print(f"\n合計 {len(all_posts)} 件収集\n")
-
-    if not all_posts:
-        print("⚠️ 投稿が取得できませんでした")
-        return
-
     print(f"✍️ 投稿文を{post_count}本生成中...\n")
+
     generated = []
 
     for i in range(post_count):
-        start = (i * len(all_posts)) // post_count
-        end = ((i + 1) * len(all_posts)) // post_count
-        keyword_posts = all_posts[start:end] if start < len(all_posts) else all_posts[:3]
-
-        post_text = generate_post_from_research(keyword_posts, i)
+        post_text = generate_post_from_research(all_posts, i)
 
         if post_text:
             post_type_info = POST_TYPES[i % len(POST_TYPES)]

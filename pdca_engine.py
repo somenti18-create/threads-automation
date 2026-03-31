@@ -5,9 +5,9 @@ PDCAエンジン
 
 import requests
 import json
-import subprocess
-from datetime import datetime, timedelta
 import os
+import anthropic
+from datetime import datetime, timedelta
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -17,6 +17,16 @@ except Exception:
 token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
 PDCA_LOG = "pdca_log.json"
+
+_claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+def _call_claude(prompt):
+    msg = _claude.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return msg.content[0].text.strip()
 
 # ───────────────────────────────
 # 1. インサイト取得
@@ -152,11 +162,7 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 （上の仮説を踏まえて、明日の投稿文生成時に必ず守るべきルール3〜5個）
 """
 
-    result = subprocess.run(
-        ["claude", "-p", prompt],
-        capture_output=True, text=True, timeout=120
-    )
-    return result.stdout.strip()
+    return _call_claude(prompt)
 
 # ───────────────────────────────
 # 3. 仮説の保存・読み込み

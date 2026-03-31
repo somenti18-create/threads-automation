@@ -6,11 +6,11 @@
 - 壁打ち用の問いかけ
 """
 
-import subprocess
 import json
 import requests
-from datetime import datetime, timedelta
 import os
+import anthropic
+from datetime import datetime, timedelta
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -20,6 +20,16 @@ except Exception:
 token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
 REPORT_LOG = "report_log.json"
+
+_claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+def _call_claude(prompt):
+    msg = _claude.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return msg.content[0].text.strip()
 
 def get_today_posts_with_insights():
     """今日投稿した内容とインサイトを取得"""
@@ -140,11 +150,7 @@ def generate_report(posts_with_insights):
 ━━━━━━━━━━━━━━━━━━━━
 """
 
-    result = subprocess.run(
-        ["claude", "-p", prompt],
-        capture_output=True, text=True, timeout=120
-    )
-    return result.stdout.strip()
+    return _call_claude(prompt)
 
 def save_report(report_text):
     """レポートをログに保存"""
