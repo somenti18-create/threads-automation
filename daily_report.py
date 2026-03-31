@@ -152,6 +152,35 @@ def generate_report(posts_with_insights):
 
     return _call_claude(prompt)
 
+def send_line_message(text):
+    """LINE Messaging APIでメッセージ送信"""
+    token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
+    user_id = os.environ.get("LINE_USER_ID")
+    if not token or not user_id:
+        print("⚠️ LINE環境変数未設定、スキップ")
+        return
+
+    # LINEは1メッセージ5000文字制限のため分割
+    max_len = 4900
+    chunks = [text[i:i+max_len] for i in range(0, len(text), max_len)]
+
+    for chunk in chunks:
+        res = requests.post(
+            "https://api.line.me/v2/bot/message/push",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "to": user_id,
+                "messages": [{"type": "text", "text": chunk}]
+            }
+        )
+        if res.status_code == 200:
+            print("✅ LINEに送信しました")
+        else:
+            print(f"⚠️ LINE送信失敗: {res.status_code} {res.text}")
+
 def save_report(report_text):
     """レポートをログに保存"""
     try:
@@ -178,6 +207,7 @@ def run_daily_report():
 
     print(report)
     save_report(report)
+    send_line_message(report)
 
     print("\n\n" + "=" * 50)
     print("💬 壁打ちしますか？（返答してください）")
