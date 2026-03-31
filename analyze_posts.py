@@ -1,9 +1,13 @@
 import requests
 import json
-from dotenv import dotenv_values
+import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
-config = dotenv_values(".env")
-token = config["THREADS_ACCESS_TOKEN"]
+token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
 
 def get_posts():
