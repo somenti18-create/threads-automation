@@ -3,7 +3,6 @@ import json
 import time
 import re
 from datetime import datetime
-from playwright.sync_api import sync_playwright
 
 # PDCAエンジンから最新指示を取得
 def get_pdca_instructions():
@@ -49,48 +48,10 @@ PROFILE = """
 """
 
 def scrape_threads(keyword, max_posts=8):
-    """Threadsでキーワード検索して投稿を収集"""
-    posts = []
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        )
-
-        url = f"https://www.threads.com/search?q={keyword}&serp_type=default"
-        page.goto(url, wait_until="networkidle", timeout=30000)
-        time.sleep(4)
-
-        # ページ全体テキストから投稿を抽出
-        body_text = page.inner_text("body")
-
-        # いいね数・返信数のパターンで投稿を区切って抽出
-        lines = body_text.split("\n")
-        current_post = []
-        collected = []
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            # 日付パターン（例: 03/23/26）を区切りとして使う
-            if re.match(r'\d{2}/\d{2}/\d{2}', line):
-                if current_post:
-                    text = " ".join(current_post)
-                    if len(text) > 30:
-                        collected.append(text[:300])
-                current_post = []
-            elif line not in ["Translate", "Search", "Log in", "Sign up"] and not re.match(r'^\d+$', line):
-                current_post.append(line)
-
-        # 収集した投稿をpostsに追加
-        for text in collected[:max_posts]:
-            posts.append({"keyword": keyword, "text": text})
-
-        browser.close()
-
-    return posts
+    """Threadsでキーワード検索して投稿を収集（Playwright不使用）"""
+    # Renderではブラウザが使えないため空リストを返す
+    # generate_post_from_researchがサンプルなしでClaudeが生成する
+    return []
 
 def generate_post_from_research(research_posts, post_index):
     """リサーチ結果を元にClaudeで投稿文を生成"""
