@@ -1,0 +1,197 @@
+import subprocess
+import json
+import time
+import re
+from datetime import datetime
+from playwright.sync_api import sync_playwright
+
+# PDCAエンジンから最新指示を取得
+def get_pdca_instructions():
+    try:
+        from pdca_engine import get_current_instructions
+        return get_current_instructions()
+    except:
+        return ""
+
+KEYWORDS = [
+    "SNS運用",
+    "LINE運用",
+    "集客",
+    "業務効率化",
+    "営業代行",
+    "AI活用",
+    "自動化",
+]
+
+# 投稿タイプ定義（コンサル型 vs 実験者型を混ぜてPDCAで検証）
+POST_TYPES = [
+    {"type": "consultant", "label": "コンサル型", "description": "クライアントの実績・支援事例を語る。月商70万→700万などの結果を主役にする"},
+    {"type": "experimenter", "label": "実験者型", "description": "自分が実験台。このシステム構築・AI自動化・Threads運用の試行錯誤をリアルに語る"},
+    {"type": "consultant", "label": "コンサル型", "description": "SNS×売上向上のノウハウ・知識を提供する。読者が「なるほど」と思える知見"},
+    {"type": "experimenter", "label": "実験者型", "description": "今日の失敗・気づき・驚いた結果をリアルタイムで報告する形式"},
+    {"type": "consultant", "label": "コンサル型", "description": "よくある間違い（❌）と正解（✅）を対比で見せる教育型"},
+    {"type": "experimenter", "label": "実験者型", "description": "AIやClaudeで自動化した具体的な話。何時間が何分になったなどの数字を出す"},
+    {"type": "consultant", "label": "コンサル型", "description": "共感型。経営者・SNS担当者が「あるある」と思う悩みを代弁してから解決策を示す"},
+    {"type": "experimenter", "label": "実験者型", "description": "Threadsで実際に試した投稿の結果報告。伸びた理由・伸びなかった理由を分析して公開"},
+    {"type": "consultant", "label": "コンサル型", "description": "POLYNKの価値観・ミッションを語る。数字より売上、SNSは手段という想い"},
+    {"type": "experimenter", "label": "実験者型", "description": "24歳がAIで仕事を自動化していくリアルな過程。今日何を作ったか・何が変わったか"},
+]
+
+PROFILE = """
+名前: 小野寺壮史 / POLYNK (@line_polynk)
+ビジネス:
+- SNS運用代行（YouTube / TikTok / LINE / Threads）
+- 業務効率化・自動化代行（Claude Codeでシステム構築）
+  → 請求書作成・シフト管理・Google MEO・Threads自動化など
+差別化: SNSの数値ではなく「売上向上」にフォーカス
+実績: YouTubeとLINE運用で月商70万→700万（10倍以上）
+ターゲット: 飲食店・スクール・中小企業のオーナー・担当者
+"""
+
+def scrape_threads(keyword, max_posts=8):
+    """Threadsでキーワード検索して投稿を収集"""
+    posts = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        )
+
+        url = f"https://www.threads.com/search?q={keyword}&serp_type=default"
+        page.goto(url, wait_until="networkidle", timeout=30000)
+        time.sleep(4)
+
+        # ページ全体テキストから投稿を抽出
+        body_text = page.inner_text("body")
+
+        # いいね数・返信数のパターンで投稿を区切って抽出
+        lines = body_text.split("\n")
+        current_post = []
+        collected = []
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            # 日付パターン（例: 03/23/26）を区切りとして使う
+            if re.match(r'\d{2}/\d{2}/\d{2}', line):
+                if current_post:
+                    text = " ".join(current_post)
+                    if len(text) > 30:
+                        collected.append(text[:300])
+                current_post = []
+            elif line not in ["Translate", "Search", "Log in", "Sign up"] and not re.match(r'^\d+$', line):
+                current_post.append(line)
+
+        # 収集した投稿をpostsに追加
+        for text in collected[:max_posts]:
+            posts.append({"keyword": keyword, "text": text})
+
+        browser.close()
+
+    return posts
+
+def generate_post_from_research(research_posts, post_index):
+    """リサーチ結果を元にClaudeで投稿文を生成"""
+    if not research_posts:
+        return None
+
+    samples = "\n---\n".join([p["text"] for p in research_posts[:5]])
+    post_type_info = POST_TYPES[post_index % len(POST_TYPES)]
+    style = f"【{post_type_info['label']}】{post_type_info['description']}"
+
+    # PDCAからの最新指示を取得
+    pdca_instructions = get_pdca_instructions()
+    pdca_section = f"""
+【PDCAからの指示（必ず守ること）】
+{pdca_instructions}
+""" if pdca_instructions else ""
+
+    prompt = f"""あなたはSNSマーケターのコピーライターです。
+
+以下は今日Threadsで反応が取れていた投稿のサンプルです：
+
+【リサーチした投稿サンプル】
+{samples}
+
+【投稿者のプロフィール】
+{PROFILE}
+
+【今回の投稿スタイル】
+{style}
+{pdca_section}
+上記サンプルの「語り口・構成・リズム」を参考にしつつ、
+このプロフィールの人物として自然なThreads投稿文を1つ作成してください。
+
+条件：
+- 140〜300文字
+- 宣伝臭なし、価値・共感・ストーリー重視
+- ハッシュタグなし
+- 改行を効果的に使う
+- コピペ感なし、本人が書いたような自然さ
+
+投稿文だけ出力してください。"""
+
+    result = subprocess.run(
+        ["claude", "-p", prompt],
+        capture_output=True, text=True, timeout=60
+    )
+    return result.stdout.strip()
+
+def main(post_count=10):
+    print("=" * 50)
+    print(f"🔍 Threadsリサーチ開始 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+    print(f"   生成本数: {post_count}本")
+    print("=" * 50)
+
+    all_posts = []
+
+    for keyword in KEYWORDS:
+        posts = scrape_threads(keyword, max_posts=8)
+        all_posts.extend(posts)
+        print(f"  {keyword}: {len(posts)}件取得")
+
+    print(f"\n合計 {len(all_posts)} 件収集\n")
+
+    if not all_posts:
+        print("⚠️ 投稿が取得できませんでした")
+        return
+
+    print(f"✍️ 投稿文を{post_count}本生成中...\n")
+    generated = []
+
+    for i in range(post_count):
+        start = (i * len(all_posts)) // post_count
+        end = ((i + 1) * len(all_posts)) // post_count
+        keyword_posts = all_posts[start:end] if start < len(all_posts) else all_posts[:3]
+
+        post_text = generate_post_from_research(keyword_posts, i)
+
+        if post_text:
+            post_type_info = POST_TYPES[i % len(POST_TYPES)]
+            generated.append({
+                "index": i + 1,
+                "type": post_type_info["type"],
+                "label": post_type_info["label"],
+                "text": post_text
+            })
+            print(f"【投稿 {i+1}/{post_count} - {post_type_info['label']}】")
+            print(post_text)
+            print("-" * 40)
+
+    # 保存（前日分をリセット）
+    output = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "posts": generated,
+        "posted": [],
+        "log": []
+    }
+    with open("today_posts.json", "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+
+    print(f"\n✅ {len(generated)}本の投稿文を today_posts.json に保存しました")
+    return generated
+
+if __name__ == "__main__":
+    main()

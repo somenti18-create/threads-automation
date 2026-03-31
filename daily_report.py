@@ -1,0 +1,179 @@
+"""
+1日1回レポート生成
+- その日の投稿の意図と結果
+- 反省点
+- 翌日の施策
+- 壁打ち用の問いかけ
+"""
+
+import subprocess
+import json
+import requests
+from datetime import datetime, timedelta
+from dotenv import dotenv_values
+
+config = dotenv_values(".env")
+token = config["THREADS_ACCESS_TOKEN"]
+user_id = "34788313010783679"
+REPORT_LOG = "report_log.json"
+
+def get_today_posts_with_insights():
+    """今日投稿した内容とインサイトを取得"""
+    try:
+        with open("today_posts.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except:
+        return []
+
+    log = data.get("log", [])
+    posts_with_insights = []
+
+    for entry in log:
+        post_id = entry.get("post_id")
+        if not post_id:
+            continue
+
+        # インサイト取得
+        url = f"https://graph.threads.net/v1.0/{post_id}/insights"
+        params = {
+            "metric": "views,likes,replies,reposts,quotes",
+            "access_token": token
+        }
+        res = requests.get(url, params=params).json()
+
+        stats = {"views": 0, "likes": 0, "replies": 0, "reposts": 0}
+        if "data" in res:
+            for m in res["data"]:
+                val = m["values"][0]["value"] if m.get("values") else 0
+                stats[m["name"]] = val
+
+        # 投稿文を取得
+        post_index = entry.get("index", 0)
+        post_text = ""
+        for p in data.get("posts", []):
+            if p["index"] == post_index:
+                post_text = p["text"]
+                break
+
+        posts_with_insights.append({
+            "index": post_index,
+            "text": post_text,
+            "timestamp": entry.get("timestamp", ""),
+            **stats
+        })
+
+    return posts_with_insights
+
+def get_pdca_log():
+    try:
+        with open("pdca_log.json", "r", encoding="utf-8") as f:
+            log = json.load(f)
+            return log[-1] if log else {}
+    except:
+        return {}
+
+def generate_report(posts_with_insights):
+    """Claudeがレポートを生成"""
+
+    if not posts_with_insights:
+        return "今日の投稿データがまだありません。"
+
+    posts_summary = "\n---\n".join([
+        f"投稿{p['index']}本目\n"
+        f"本文: {p['text'][:150]}\n"
+        f"views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']}"
+        for p in posts_with_insights
+    ])
+
+    total_views = sum(p["views"] for p in posts_with_insights)
+    total_likes = sum(p["likes"] for p in posts_with_insights)
+    total_replies = sum(p["replies"] for p in posts_with_insights)
+    best = max(posts_with_insights, key=lambda x: x["views"]) if posts_with_insights else {}
+
+    pdca = get_pdca_log()
+    yesterday_instructions = pdca.get("analysis", "（まだデータなし）")[:500]
+
+    prompt = f"""あなたはSNSマーケターのコーチです。
+以下は小野寺壮史（@line_polynk / SNS運用×AI自動化）の今日のThreads運用データです。
+
+【今日の投稿と結果】
+{posts_summary}
+
+【今日の合計】
+- 総表示数: {total_views}
+- 総いいね: {total_likes}
+- 総返信: {total_replies}
+- 最高表示投稿: {best.get('text', '')[:80]}（{best.get('views', 0)} views）
+
+【今日の投稿方針（前日PDCAより）】
+{yesterday_instructions}
+
+以下の形式でレポートを作成してください。
+マークダウンは使わず、シンプルで読みやすい文章で書いてください。
+
+━━━━━━━━━━━━━━━━━━━━
+📊 今日の運用レポート（{datetime.now().strftime('%Y/%m/%d')}）
+━━━━━━━━━━━━━━━━━━━━
+
+【今日の数字】
+（合計表示・いいね・返信・ベスト投稿を記載）
+
+【今日の意図と結果】
+（今日どんな狙いで投稿したか、結果はどうだったか）
+
+【よかった点】
+（伸びた投稿の要因分析）
+
+【反省点】
+（伸びなかった投稿の問題点）
+
+【明日の施策】
+（明日試すべき具体的なこと3つ）
+
+【壁打ちしたいこと】
+（あなたが小野寺さんに投げかけたい問いや仮説を1〜2個。一緒に考えたいトピック）
+
+━━━━━━━━━━━━━━━━━━━━
+"""
+
+    result = subprocess.run(
+        ["claude", "-p", prompt],
+        capture_output=True, text=True, timeout=120
+    )
+    return result.stdout.strip()
+
+def save_report(report_text):
+    """レポートをログに保存"""
+    try:
+        with open(REPORT_LOG, "r", encoding="utf-8") as f:
+            log = json.load(f)
+    except:
+        log = []
+
+    log.append({
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "report": report_text
+    })
+
+    with open(REPORT_LOG, "w", encoding="utf-8") as f:
+        json.dump(log, f, ensure_ascii=False, indent=2)
+
+def run_daily_report():
+    print("\n" + "=" * 50)
+    print(f"📋 デイリーレポート生成中...")
+    print("=" * 50 + "\n")
+
+    posts = get_today_posts_with_insights()
+    report = generate_report(posts)
+
+    print(report)
+    save_report(report)
+
+    print("\n\n" + "=" * 50)
+    print("💬 壁打ちしますか？（返答してください）")
+    print("=" * 50)
+
+    return report
+
+if __name__ == "__main__":
+    run_daily_report()
