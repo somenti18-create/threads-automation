@@ -101,8 +101,9 @@ def setup_schedule():
     # 朝のレポート JST 06:00 = UTC 21:00
     schedule.every().day.at("21:00").do(morning_report)
 
-    # 投稿スケジュール（30分ごと）
-    schedule.every(30).minutes.do(post_job)
+    # 投稿スケジュール（1日10本・JST分散）
+    for t in post_times:
+        schedule.every().day.at(t).do(post_job)
 
     # 夜間PDCA JST 22:00 = UTC 13:00
     schedule.every().day.at("13:00").do(nightly_pdca)
