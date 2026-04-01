@@ -191,7 +191,7 @@ def get_todays_keywords():
     """曜日ベースで3キーワードを選択（7日で21キーワードを網羅）"""
     weekday = datetime.now().weekday()  # 0=月 〜 6=日
     start = weekday * 3
-    return KEYWORDS[start:start + 3]
+    return KEYWORDS[start:start + 1]
 
 def main(post_count=10):
     todays_keywords = get_todays_keywords()
