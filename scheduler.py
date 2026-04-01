@@ -9,11 +9,13 @@ from analyze_posts import analyze
 from pdca_engine import run_pdca
 from daily_report import run_daily_report
 
-# 投稿時間パターン
+# 投稿時間パターン（UTC基準 = JST-9時間）
+# JST 07:00 = UTC 22:00(前日), JST 08:30 = UTC 23:30(前日) → 繰り上げて翌日分で管理
+# 実用的にUTC表記: JST07:00→22:00, JST08:30→23:30, JST10:00→01:00...
 POST_TIMES = {
-    "10posts": ["07:00", "08:30", "10:00", "11:30", "13:00", "15:00", "17:00", "19:00", "21:00", "22:30"],
-    "5posts":  ["07:00", "10:00", "13:00", "17:00", "21:00"],
-    "3posts":  ["08:00", "13:00", "20:00"],
+    "10posts": ["22:00", "23:30", "01:00", "02:30", "04:00", "06:00", "08:00", "10:00", "12:00", "13:30"],
+    "5posts":  ["22:00", "01:00", "04:00", "08:00", "12:00"],
+    "3posts":  ["23:00", "04:00", "11:00"],
 }
 
 # モード切替のしきい値
@@ -88,15 +90,15 @@ def setup_schedule():
     print(f"   モード: {mode} ({len(post_times)}投稿/日)")
     print(f"   投稿時間: {', '.join(post_times)}")
 
-    # 毎朝リサーチ
-    schedule.every().day.at("06:00").do(morning_research)
+    # 毎朝リサーチ JST 06:00 = UTC 21:00
+    schedule.every().day.at("21:00").do(morning_research)
 
     # 投稿スケジュール
     for t in post_times:
         schedule.every().day.at(t).do(post_job)
 
-    # 夜間PDCA＋デイリーレポート
-    schedule.every().day.at("22:00").do(nightly_pdca)
+    # 夜間PDCA＋デイリーレポート JST 22:00 = UTC 13:00
+    schedule.every().day.at("13:00").do(nightly_pdca)
 
     print(f"\n待機中... (Ctrl+C で停止)\n")
 
