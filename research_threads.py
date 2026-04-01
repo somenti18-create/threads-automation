@@ -1,6 +1,8 @@
 import json
 import re
 import os
+import time
+import requests
 import anthropic
 from datetime import datetime
 try:
@@ -68,10 +70,63 @@ PROFILE = """
 """
 
 def scrape_threads(keyword, max_posts=8):
-    """Threadsでキーワード検索して投稿を収集（Playwright不使用）"""
-    # Renderではブラウザが使えないため空リストを返す
-    # generate_post_from_researchがサンプルなしでClaudeが生成する
-    return []
+    """ApifyでThreadsのキーワード検索して投稿を収集"""
+    apify_token = os.environ.get("APIFY_API_TOKEN")
+    if not apify_token:
+        print("⚠️ APIFY_API_TOKEN未設定")
+        return []
+
+    try:
+        # Actorを非同期で起動
+        run_res = requests.post(
+            "https://api.apify.com/v2/acts/futurizerush~threads-keyword-search/runs",
+            headers={"Authorization": f"Bearer {apify_token}"},
+            json={"keyword": keyword, "maxResults": max_posts, "sortBy": "top"},
+            timeout=30
+        )
+        run_data = run_res.json()
+        run_id = run_data.get("data", {}).get("id")
+        if not run_id:
+            print(f"⚠️ Apify起動失敗: {run_data}")
+            return []
+
+        # 完了待ち（最大120秒）
+        for _ in range(24):
+            time.sleep(5)
+            status_res = requests.get(
+                f"https://api.apify.com/v2/actor-runs/{run_id}",
+                headers={"Authorization": f"Bearer {apify_token}"}
+            ).json()
+            status = status_res.get("data", {}).get("status")
+            if status == "SUCCEEDED":
+                break
+            elif status in ("FAILED", "ABORTED", "TIMED-OUT"):
+                print(f"⚠️ Apify実行失敗: {status}")
+                return []
+
+        # データ取得
+        dataset_id = status_res.get("data", {}).get("defaultDatasetId")
+        items_res = requests.get(
+            f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+            headers={"Authorization": f"Bearer {apify_token}"},
+            params={"format": "json"}
+        ).json()
+
+        posts = []
+        for item in items_res[:max_posts]:
+            text = item.get("text") or item.get("content") or ""
+            if text:
+                posts.append({
+                    "text": text,
+                    "likes": item.get("likeCount", 0),
+                    "replies": item.get("replyCount", 0),
+                })
+        print(f"  {keyword}: {len(posts)}件取得")
+        return posts
+
+    except Exception as e:
+        print(f"⚠️ スクレイピングエラー ({keyword}): {e}")
+        return []
 
 def generate_post_from_research(research_posts, post_index):
     """リサーチ結果を元にClaudeで投稿文を生成"""
