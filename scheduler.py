@@ -116,11 +116,6 @@ def setup_schedule():
 def main():
     setup_schedule()
 
-    # 起動時に今日の投稿文がなければリサーチ実行
-    if not os.path.exists("today_posts.json"):
-        print("📝 投稿文がないためリサーチを実行します...")
-        morning_research()
-
     while True:
         schedule.run_pending()
         time.sleep(30)
