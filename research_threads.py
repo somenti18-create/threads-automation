@@ -33,10 +33,7 @@ KEYWORDS = [
     "SNS運用",
     "LINE運用",
     "集客",
-    "業務効率化",
-    "営業代行",
     "AI活用",
-    "自動化",
 ]
 
 # 投稿タイプ定義（コンサル型 vs 実験者型を混ぜてPDCAで検証）
@@ -81,7 +78,7 @@ def scrape_threads(keyword, max_posts=8):
         run_res = requests.post(
             "https://api.apify.com/v2/acts/futurizerush~threads-keyword-search/runs",
             headers={"Authorization": f"Bearer {apify_token}"},
-            json={"keyword": keyword, "maxResults": max_posts, "sortBy": "top"},
+            json={"keywords": [keyword], "maxResults": "10", "sortBy": "top"},
             timeout=30
         )
         run_data = run_res.json()
