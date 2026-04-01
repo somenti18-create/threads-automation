@@ -55,13 +55,18 @@ def check_and_switch_mode():
         print(f"モード確認エラー: {e}")
 
 def morning_research():
-    """毎朝6:00 リサーチ→投稿文生成"""
+    """毎朝05:00 リサーチ→投稿文生成 (JST05:00 = UTC20:00)"""
     print(f"\n{'='*50}")
     print(f"🌅 朝のリサーチ - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     print(f"{'='*50}")
     mode = get_mode()
     count = {"10posts": 10, "5posts": 5, "3posts": 3}[mode]
     research(post_count=count)
+
+def morning_report():
+    """毎朝06:00 LINEにレポート送信 (JST06:00 = UTC21:00)"""
+    print(f"\n📋 朝のレポート送信 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+    run_daily_report()
 
 def post_job():
     """投稿時間: 1本投稿"""
@@ -70,11 +75,10 @@ def post_job():
     post_today_posts()
 
 def nightly_pdca():
-    """毎晩22:00 デイリーレポート＋PDCA"""
+    """毎晩22:00 PDCA分析 (JST22:00 = UTC13:00)"""
     print(f"\n🔄 夜間PDCA - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     analyze()
     run_pdca()
-    run_daily_report()
     check_and_switch_mode()
 
 def reschedule():
@@ -90,14 +94,17 @@ def setup_schedule():
     print(f"   モード: {mode} ({len(post_times)}投稿/日)")
     print(f"   投稿時間: {', '.join(post_times)}")
 
-    # 毎朝リサーチ JST 06:00 = UTC 21:00
-    schedule.every().day.at("21:00").do(morning_research)
+    # 毎朝リサーチ JST 05:00 = UTC 20:00
+    schedule.every().day.at("20:00").do(morning_research)
+
+    # 朝のレポート JST 06:00 = UTC 21:00
+    schedule.every().day.at("21:00").do(morning_report)
 
     # 投稿スケジュール
     for t in post_times:
         schedule.every().day.at(t).do(post_job)
 
-    # 夜間PDCA＋デイリーレポート JST 22:00 = UTC 13:00
+    # 夜間PDCA JST 22:00 = UTC 13:00
     schedule.every().day.at("13:00").do(nightly_pdca)
 
     print(f"\n待機中... (Ctrl+C で停止)\n")
