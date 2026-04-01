@@ -19,3 +19,5 @@ services:
         sync: false
       - key: LINE_USER_ID
         sync: false
+      - key: APIFY_API_TOKEN
+        sync: false

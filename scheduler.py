@@ -8,6 +8,7 @@ from post_to_threads import post_today_posts
 from analyze_posts import analyze
 from pdca_engine import run_pdca
 from daily_report import run_daily_report
+from inquiry_detector import run_inquiry_check
 
 # 投稿時間パターン（UTC基準 = JST-9時間）
 # JST 07:00 = UTC 22:00(前日), JST 08:30 = UTC 23:30(前日) → 繰り上げて翌日分で管理
@@ -100,12 +101,14 @@ def setup_schedule():
     # 朝のレポート JST 06:00 = UTC 21:00
     schedule.every().day.at("21:00").do(morning_report)
 
-    # 投稿スケジュール
-    for t in post_times:
-        schedule.every().day.at(t).do(post_job)
+    # 投稿スケジュール（30分ごと）
+    schedule.every(30).minutes.do(post_job)
 
     # 夜間PDCA JST 22:00 = UTC 13:00
     schedule.every().day.at("13:00").do(nightly_pdca)
+
+    # 問い合わせリプ検知 2時間ごと
+    schedule.every(2).hours.do(run_inquiry_check)
 
     print(f"\n待機中... (Ctrl+C で停止)\n")
 

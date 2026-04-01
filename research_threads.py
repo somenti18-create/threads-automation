@@ -30,10 +30,27 @@ def get_pdca_instructions():
         return ""
 
 KEYWORDS = [
-    "SNS運用",
+    "Threads運用",
+    "TikTok運用",
+    "YouTube運用",
+    "SNSマーケティング",
+    "SNS集客",
+    "集客自動化",
     "LINE運用",
-    "集客",
+    "LINEマーケティング",
+    "AI自動化",
     "AI活用",
+    "業務自動化",
+    "業務効率化",
+    "売上アップ",
+    "売上改善",
+    "中小企業 集客",
+    "スクール集客",
+    "飲食店集客",
+    "店舗集客",
+    "リピーター獲得",
+    "新規顧客獲得",
+    "フリーランス",
 ]
 
 # 投稿タイプ定義（コンサル型 vs 実験者型を混ぜてPDCAで検証）
@@ -170,15 +187,23 @@ def generate_post_from_research(research_posts, post_index):
 
     return _call_claude(prompt)
 
+def get_todays_keywords():
+    """曜日ベースで3キーワードを選択（7日で21キーワードを網羅）"""
+    weekday = datetime.now().weekday()  # 0=月 〜 6=日
+    start = weekday * 3
+    return KEYWORDS[start:start + 3]
+
 def main(post_count=10):
+    todays_keywords = get_todays_keywords()
     print("=" * 50)
     print(f"🔍 Threadsリサーチ開始 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+    print(f"   本日のキーワード: {', '.join(todays_keywords)}")
     print(f"   生成本数: {post_count}本")
     print("=" * 50)
 
     all_posts = []
 
-    for keyword in KEYWORDS:
+    for keyword in todays_keywords:
         posts = scrape_threads(keyword, max_posts=8)
         all_posts.extend(posts)
         print(f"  {keyword}: {len(posts)}件取得")

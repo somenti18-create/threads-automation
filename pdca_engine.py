@@ -67,8 +67,18 @@ def get_recent_posts_with_insights(days=2):
                 val = m["values"][0]["value"] if m.get("values") else 0
                 stats[m["name"]] = val
 
-        # エンゲージメント率計算
-        engagement = stats["likes"] + stats["replies"] * 2 + stats["reposts"] * 3
+        # 問い合わせリプ検知
+        inquiry_count = 0
+        try:
+            from inquiry_detector import get_replies, is_inquiry
+            replies = get_replies(p["id"])
+            inquiry_count = sum(1 for r in replies if is_inquiry(r.get("text", "")))
+        except Exception:
+            pass
+        stats["inquiry_count"] = inquiry_count
+
+        # エンゲージメント率計算（問い合わせリプは最重要指標として10倍）
+        engagement = stats["likes"] + stats["replies"] * 2 + stats["reposts"] * 3 + inquiry_count * 10
         stats["engagement_score"] = engagement
 
         results.append({
@@ -109,11 +119,11 @@ def analyze_and_generate_hypothesis(posts_with_insights):
         pass
 
     top_text = "\n---\n".join([
-        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']}"
+        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
         for p in top
     ])
     bottom_text = "\n---\n".join([
-        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']}"
+        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
         for p in bottom
     ])
 
@@ -153,13 +163,17 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 ## 過去仮説の検証
 （過去の仮説が正しかったか、間違いだったかを評価）
 
+## 問い合わせリプ分析
+- 問い合わせリプが来た投稿の共通点（書き方・構成・テーマ）
+- 問い合わせを引き出すために次回試すべき要素
+
 ## 次の投稿に向けた仮説（3つ）
 1. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
 2. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
 3. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
 
 ## 次の投稿への具体的指示
-（上の仮説を踏まえて、明日の投稿文生成時に必ず守るべきルール3〜5個）
+（上の仮説を踏まえて、明日の投稿文生成時に必ず守るべきルール3〜5個。「問い合わせリプ1日2件」を目標に、読者が「詳しく聞きたい」と思うような投稿を意識すること）
 """
 
     return _call_claude(prompt)
