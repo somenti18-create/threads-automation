@@ -17,6 +17,7 @@ except Exception:
 token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
 PDCA_LOG = "pdca_log.json"
+HYPOTHESIS_LOG = "hypothesis_log.json"
 
 _claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
@@ -196,10 +197,10 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 - 問い合わせリプが来た投稿の共通点（書き方・構成・テーマ）
 - 問い合わせを引き出すために次回試すべき要素
 
-## 次の投稿に向けた仮説（3つ）
-1. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
-2. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
-3. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証方法: 〇〇
+## 次の投稿に向けた仮説（思いつく限り全て列挙）
+1. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証指標: views or likes or replies
+2. 仮説: 〇〇すると伸びるはず / 理由: 〇〇 / 検証指標: views or likes or replies
+（以降、データから読み取れる仮説を全て）
 
 ## 次の投稿への具体的指示
 （上の仮説を踏まえて、明日の投稿文生成時に必ず守るべきルール3〜5個。「問い合わせリプ1日2件」を目標に、読者が「詳しく聞きたい」と思うような投稿を意識すること）
@@ -230,6 +231,10 @@ def save_hypothesis(analysis_text, posts_data):
         json.dump(log, f, ensure_ascii=False, indent=2)
 
     print(f"✅ 仮説を {PDCA_LOG} に保存しました")
+
+    # 全仮説を hypothesis_log.json にも保存
+    save_new_hypotheses(extract_all_hypotheses(analysis_text))
+
     return entry
 
 def extract_hypothesis(analysis_text):
@@ -255,6 +260,168 @@ def load_pdca_log():
 
 def load_past_hypotheses():
     return load_pdca_log()
+
+# ───────────────────────────────
+# 仮説ログ管理
+# ───────────────────────────────
+
+def load_hypothesis_log():
+    try:
+        with open(HYPOTHESIS_LOG, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"hypotheses": []}
+
+def save_hypothesis_log(data):
+    with open(HYPOTHESIS_LOG, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def extract_all_hypotheses(analysis_text):
+    """分析テキストから全仮説を抽出してリストで返す"""
+    lines = analysis_text.split("\n")
+    hypotheses = []
+    in_hypothesis = False
+    for line in lines:
+        if "次の投稿に向けた仮説" in line:
+            in_hypothesis = True
+            continue
+        elif in_hypothesis and line.startswith("##"):
+            break
+        elif in_hypothesis and "仮説:" in line and line.strip():
+            # parse: "1. 仮説: 〇〇 / 理由: 〇〇 / 検証指標: likes"
+            content = line.strip().lstrip("0123456789. ")
+            # extract metric
+            metric = "likes"  # default
+            if "検証指標:" in content:
+                m = content.split("検証指標:")[-1].strip().split()[0]
+                if m in ["views", "likes", "replies"]:
+                    metric = m
+            hypotheses.append({"content": content, "metric": metric})
+    return hypotheses
+
+def save_new_hypotheses(hypotheses_list):
+    """新しい仮説をhypothesis_log.jsonに追加（重複チェックあり）"""
+    data = load_hypothesis_log()
+    existing_contents = {h["content"][:30] for h in data["hypotheses"]}
+
+    added = 0
+    for hyp in hypotheses_list:
+        # Simple dedup by first 30 chars
+        key = hyp["content"][:30]
+        if key in existing_contents:
+            continue
+
+        entry = {
+            "id": f"hyp_{datetime.now().strftime('%Y%m%d')}_{added:02d}",
+            "created_at": datetime.now().strftime("%Y-%m-%d"),
+            "content": hyp["content"],
+            "test_metric": hyp.get("metric", "likes"),
+            "status": "testing",
+            "tagged_post_ids": [],
+            "required_posts": 5,
+            "avg_metric_with": None,
+            "avg_metric_without": None,
+            "verdict": None,
+            "verdict_at": None,
+            "verdict_reason": None
+        }
+        data["hypotheses"].append(entry)
+        existing_contents.add(key)
+        added += 1
+
+    save_hypothesis_log(data)
+    print(f"✅ 新規仮説 {added}件 を hypothesis_log.json に追加")
+    return added
+
+def get_hypothesis_to_test():
+    """現在テスト中の仮説のうち最も古いものを返す（投稿タグ付け用）"""
+    data = load_hypothesis_log()
+    testing = [h for h in data["hypotheses"] if h["status"] == "testing"]
+    if not testing:
+        return None
+    # Sort by created_at, return oldest with fewest tagged posts
+    testing.sort(key=lambda x: (x["created_at"], len(x["tagged_post_ids"])))
+    return testing[0]
+
+def tag_post_to_hypothesis(hypothesis_id, post_id):
+    """投稿IDを仮説にタグ付けする"""
+    data = load_hypothesis_log()
+    for h in data["hypotheses"]:
+        if h["id"] == hypothesis_id:
+            if post_id not in h["tagged_post_ids"]:
+                h["tagged_post_ids"].append(post_id)
+            break
+    save_hypothesis_log(data)
+
+def evaluate_hypotheses():
+    """十分なデータが集まった仮説を評価してvalidated/rejectedに更新"""
+    try:
+        with open("insights_history.json", "r", encoding="utf-8") as f:
+            insights = json.load(f)
+    except:
+        return
+
+    # 24時間後データのみ使用
+    insights_24h = {e["post_id"]: e for e in insights if e.get("hours") == 24}
+
+    data = load_hypothesis_log()
+    updated = False
+
+    for h in data["hypotheses"]:
+        if h["status"] != "testing":
+            continue
+
+        tagged_ids = h["tagged_post_ids"]
+        metric = h["test_metric"]
+        required = h["required_posts"]
+
+        # タグ付き投稿で24hデータがあるもの
+        tagged_with_data = [
+            insights_24h[pid] for pid in tagged_ids
+            if pid in insights_24h
+        ]
+
+        if len(tagged_with_data) < required:
+            continue  # まだデータ不足
+
+        # タグなし投稿（コントロール群）
+        all_post_ids_with_data = set(insights_24h.keys())
+        untagged_with_data = [
+            insights_24h[pid] for pid in all_post_ids_with_data
+            if pid not in tagged_ids
+        ]
+
+        if len(untagged_with_data) < 3:
+            continue  # コントロール群が少なすぎ
+
+        avg_with = sum(e.get(metric, 0) for e in tagged_with_data) / len(tagged_with_data)
+        avg_without = sum(e.get(metric, 0) for e in untagged_with_data) / len(untagged_with_data)
+
+        h["avg_metric_with"] = round(avg_with, 2)
+        h["avg_metric_without"] = round(avg_without, 2)
+        h["verdict_at"] = datetime.now().strftime("%Y-%m-%d")
+
+        # 10%以上改善で validated
+        if avg_without > 0 and avg_with >= avg_without * 1.1:
+            h["status"] = "validated"
+            h["verdict"] = "validated"
+            h["verdict_reason"] = f"{metric}平均: タグあり{avg_with:.1f} vs なし{avg_without:.1f}（+{((avg_with/avg_without)-1)*100:.0f}%）"
+            print(f"✅ 仮説検証済み: {h['content'][:40]} → {h['verdict_reason']}")
+        else:
+            h["status"] = "rejected"
+            h["verdict"] = "rejected"
+            h["verdict_reason"] = f"{metric}平均: タグあり{avg_with:.1f} vs なし{avg_without:.1f}（効果なし）"
+            print(f"❌ 仮説却下: {h['content'][:40]} → {h['verdict_reason']}")
+
+        updated = True
+
+    if updated:
+        save_hypothesis_log(data)
+
+def get_validated_hypotheses():
+    """validated済みの仮説一覧を返す"""
+    data = load_hypothesis_log()
+    return [h for h in data["hypotheses"] if h["verdict"] == "validated"]
 
 def get_current_instructions():
     """最新の仮説から投稿生成用の指示を取得"""
@@ -323,6 +490,9 @@ def run_pdca():
     # 仮説保存
     entry = save_hypothesis(analysis, posts)
 
+    # 仮説評価（十分なデータが集まったものを検証）
+    evaluate_hypotheses()
+
     # Googleスプレッドシートに書き込み
     try:
         from sheets_logger import log_pdca
@@ -330,7 +500,7 @@ def run_pdca():
     except Exception as e:
         print(f"⚠️ PDCA書き込みエラー: {e}")
 
-    # ライティングスキルを自動更新
+    # ライティングスキルを自動更新（検証済み仮説のみ反映）
     update_writing_skills(analysis)
 
     # 次の投稿指示を取得して表示
@@ -345,38 +515,43 @@ def run_pdca():
 
 
 def update_writing_skills(analysis_text):
-    """PDCA分析を元に、既存ルール全体を見直して矛盾のない最新ルール一覧に再生成"""
+    """検証済み仮説のみをwriting_skillsに統合する"""
     import re
 
-    # 既存ルールを読み込む
+    validated = get_validated_hypotheses()
+    if not validated:
+        print("📋 検証済み仮説なし。writing_skills更新スキップ")
+        return
+
     try:
         with open("writing_skills.json", "r", encoding="utf-8") as f:
             skills = json.load(f)
         existing_rules = skills.get("rules", [])
     except:
+        skills = {}
         existing_rules = []
 
+    validated_text = "\n".join([f"- {h['content']} (根拠: {h['verdict_reason']})" for h in validated])
     existing_text = "\n".join([f"- {r}" for r in existing_rules]) if existing_rules else "（まだルールなし）"
 
     prompt = f"""あなたはThreads投稿のライティングコーチです。
 
-以下の「既存のライティングルール」と「今回のPDCA分析」を照らし合わせて、
-矛盾・重複を解消した「最新の正しいルール一覧」を再生成してください。
+以下の「既存ルール」と「データで検証済みの仮説」を統合して、
+矛盾のない最新ルール一覧を再生成してください。
 
-【既存のライティングルール】
+【既存ルール】
 {existing_text}
 
-【今回のPDCA分析】
-{analysis_text}
+【データで検証済みの仮説（必ず反映すること）】
+{validated_text}
 
 条件：
-- 既存ルールと新分析を統合して、矛盾がないルール一覧を作る
-- 古いルールが新分析で否定された場合は新しいほうを採用する
+- 検証済み仮説は必ず反映する
+- 既存ルールと矛盾する場合は検証済み仮説を優先
 - 具体的で実行可能な内容のみ
-- 最大10個まで
 - ルールの順番は重要度が高い順
 
-JSON形式で出力してください：
+JSON形式で出力：
 {{"rules": ["ルール1", "ルール2", "..."]}}
 
 JSONのみ出力してください。"""
@@ -388,23 +563,15 @@ JSONのみ出力してください。"""
             return
         data = json.loads(match.group())
         new_rules = data.get("rules", [])
-
         if not new_rules:
             return
-
-        skills = {
-            "rules": new_rules,
-            "updated": datetime.now().strftime("%Y-%m-%d")
-        }
+        skills["rules"] = new_rules
+        skills["updated"] = datetime.now().strftime("%Y-%m-%d")
         with open("writing_skills.json", "w", encoding="utf-8") as f:
             json.dump(skills, f, ensure_ascii=False, indent=2)
-
-        print(f"\n✅ ライティングスキル再生成完了: {len(new_rules)}件")
-        for r in new_rules:
-            print(f"  ・{r}")
-
+        print(f"✅ writing_skills更新（検証済み仮説{len(validated)}件反映）")
     except Exception as e:
-        print(f"⚠️ ライティングスキル更新失敗: {e}")
+        print(f"⚠️ writing_skills更新失敗: {e}")
 
 if __name__ == "__main__":
     run_pdca()

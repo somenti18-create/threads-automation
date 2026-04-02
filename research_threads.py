@@ -24,10 +24,14 @@ def _call_claude(prompt):
 # PDCAエンジンから最新指示を取得
 def get_pdca_instructions():
     try:
-        from pdca_engine import get_current_instructions
-        return get_current_instructions()
+        from pdca_engine import get_current_instructions, get_hypothesis_to_test
+        instructions = get_current_instructions()
+        hyp = get_hypothesis_to_test()
+        if hyp:
+            instructions += f"\n\n【今回検証する仮説】\n{hyp['content']}\n（この仮説を意識した投稿を作ること）"
+        return instructions, hyp
     except:
-        return ""
+        return "", None
 
 # ライティングスキルを読み込む
 def get_writing_skills():
@@ -95,52 +99,74 @@ POST_TYPES = [
     {
         "type": "viral",
         "label": "フック型",
-        "description": """冒頭に「えっ？」となる強い一言を置く。
-例）「SNSを毎日100投稿してたのに反応なし。」「フォロワー1000人いるのに予約0。」
-→ 正直な感情（やめたくなった・意味ないと思った）
-→ でも続けてた・続けてる
-→ 最後は「〜な人いますか？」または「〜って思ってる人いませんか？」
-80〜130文字・1文10文字以下・改行多め"""
+        "description": """冒頭に強い一言を置く。
+例）「フォロワーが1000人もいるのに予約が0。」
+→ 深刻な感情（やめようかと思った・廃業が頭をよぎった）
+→ でも続けてた理由・気づき
+→ 最後は「〜な人いるんじゃないかな」か断定
+50〜110文字・改行多め"""
     },
     {
         "type": "connect",
-        "label": "繋がり投稿",
-        "description": "「整体・サロン・パーソナルトレーナーでSNSや集客に悩んでる方と繋がりたい！」形式。箇条書き3つ以内。最後は「繋がりましょう！！」。80〜130文字"
+        "label": "繋がり投稿（箇条書き型）",
+        "description": """「整体・サロン・パーソナルトレーナーでSNSや集客に悩んでる方と繋がりたいんですよね」形式。
+ペルソナの悩みから3つ箇条書き。締めは「困ってる人も繋がりましょう！お話聞くだけでも全然大丈夫です！」
+50〜110文字"""
     },
     {
         "type": "viral",
         "label": "逆説型",
         "description": """「〇〇してるのに〇〇」という逆説を冒頭に置く。
-例）「毎日投稿してるのに予約が増えない。」「LINEを導入したのに来店に繋がらない。」
-→ 自分もそうだった・周りもそう
-→ 気づいたこと・変わったこと（説明しない、感情だけ）
-→ 最後は問いかけ
-80〜130文字・1文10文字以下・改行多め"""
+例）「フォロワーが100人も増えたのに予約が0。」
+→「どうしても」「なのに」「それでも」で深刻さを強調
+→ 原因は「見せ方」が違っただけ
+→ 最後は「〜な人いませんか？」か断定
+50〜110文字・改行多め"""
     },
     {
         "type": "viral",
         "label": "告白型",
-        "description": """「正直に言うと〜」「ぶっちゃけ〜」から始める。
-本音・弱音・迷い・葛藤を短く語る。
-例）「正直、SNSが嫌いになりかけてた。」「ぶっちゃけ何回もやめようと思った。」
-→ でも続けた理由・気づき
-→ 最後は断定か軽い問いかけ
-80〜130文字・1文10文字以下・改行多め"""
+        "description": """「正直お店を辞めようかと思った」レベルの深刻な本音から始める。
+施術・店舗経営で体ボロボロ、寝る時間削ってSNS、でも売上0、を短く積み重ねる。
+→ 原因は「見せ方」が少し違っただけだった
+→ 断定か自然な余韻で終わる
+50〜110文字・改行多め"""
     },
     {
         "type": "connect",
-        "label": "繋がり投稿",
-        "description": "「整体・サロン・パーソナルトレーナーでSNSや集客に悩んでる方と繋がりたい！」形式。箇条書き3つ以内。最後は「繋がりましょう！！」。80〜130文字"
+        "label": "繋がり投稿（問いかけ型）",
+        "description": """冒頭にペルソナの悩みを問いかけ形式で置く。
+例）「フォロワーは増えてるのに予約が入らない経験ってありませんか？」
+→ 自分もそうだった・同じ悩みを持つ人と話したい
+→ 締めは「困ってる人も繋がりましょう！お話聞くだけでも全然大丈夫です！」
+50〜110文字・改行多め"""
     },
     {
         "type": "viral",
         "label": "問題提起型",
-        "description": """「〇〇って意味ないな」「〇〇は間違いだった」など、一般的な常識や努力を疑う一言から始める。
-例）「SNSってあんまり意味ないな、って思ってた。」
-→ そう思ってた理由・状況
-→ でも実は〜だった（結論は出さなくていい、問いかけでOK）
-→ 最後は「〜って思ってる人いませんか？」
-80〜130文字・1文10文字以下・改行多め"""
+        "description": """「〇〇って意味ないな」「〇〇は間違いだった」と一般的な努力を疑う一言から始める。
+→ そう思ってた理由・状況（数字は出てるのに売上0など）
+→ でも見せ方を変えたら違った
+→ 最後は「〜な人いるんじゃないかな」か「〜な人いませんか？」
+50〜110文字・改行多め"""
+    },
+    {
+        "type": "connect",
+        "label": "繋がり投稿（宣言型）",
+        "description": """「整体・サロン・トレーナーの方の見せ方を変えるのを手伝いたいと思ってます」という宣言から始める。
+→ なぜそう思うか（自分も同じ悩みを経験した・技術があるのに伝わらないのはもったいない）
+→ 締めは「困ってる人も繋がりましょう！お話聞くだけでも全然大丈夫です！」
+50〜110文字・改行多め"""
+    },
+    {
+        "type": "viral",
+        "label": "フック型",
+        "description": """冒頭に強い数字や事実を置く。
+例）「毎日投稿して3ヶ月。売上は0のまま。」
+→ その時の感情（虚しかった・誰にも言えなかった）
+→ 気づき・変化
+→ 最後は「〜な人いませんか？」か断定
+50〜110文字・改行多め"""
     },
 ]
 
@@ -153,7 +179,7 @@ POST_TYPE_STORY = {"type": "viral", "label": "ストーリー投稿", "descripti
 - いろんな副業を転々としていた
 - 結局たどり着いたのが起業
 
-構成：短い事実の積み重ね（1文1行）→最後は「結局〜した/なった。」など断定で終わる。問いかけなし。説明・宣伝ゼロ。80〜130文字・1文10文字以下・改行多め"""}
+構成：短い事実の積み重ね（1文1行）→最後は「結局〜した/なった。」など断定で終わる。問いかけなし。説明・宣伝ゼロ。50〜110文字・改行多め"""}
 
 PROFILE = """
 名前: 小野寺壮史 / POLYNK (@line_polynk)
@@ -229,13 +255,18 @@ def scrape_threads(keyword, max_posts=8):
         print(f"⚠️ スクレイピングエラー ({keyword}): {e}")
         return []
 
-def generate_post_from_research(research_posts, post_index, post_type_override=None):
+def generate_post_from_research(research_posts, post_index, post_type_override=None, hypothesis=None):
     """リサーチ結果を元にClaudeで投稿文を生成"""
     post_type_info = post_type_override if post_type_override else POST_TYPES[post_index % len(POST_TYPES)]
     style = f"【{post_type_info['label']}】{post_type_info['description']}"
 
-    # PDCAからの最新指示を取得
-    pdca_instructions = get_pdca_instructions()
+    # PDCAからの最新指示を取得（仮説はmainで取得済みのものを使う）
+    pdca_instructions_raw, _ = get_pdca_instructions()
+    # 仮説セクションを別途構築
+    hyp_section = ""
+    if hypothesis:
+        hyp_section = f"\n\n【今回検証する仮説】\n{hypothesis['content']}\n（この仮説を意識した投稿を作ること）"
+    pdca_instructions = pdca_instructions_raw + hyp_section if pdca_instructions_raw else hyp_section
     pdca_section = f"""
 【PDCAからの指示（必ず守ること）】
 {pdca_instructions}
@@ -271,15 +302,18 @@ def generate_post_from_research(research_posts, post_index, post_type_override=N
 {style}
 {pdca_section}{skills_section}
 【絶対に守る条件】
-- 文字数は80〜130文字（厳守。超えたら書き直し）
+- 文字数は50〜110文字（厳守。超えたら書き直し）
 - 1文は10文字以下。短く切る
 - 改行は1〜2行ごと
 - 説明しない。感情と事実だけ
 - ハッシュタグなし・宣伝臭なし
+- 語尾タメ口NG：「〜しない？」「〜じゃない？」「〜かもしれない」「〜だと思う」
+- 語尾OK：「〜なんですよね」「〜かもしれません」「〜だったりします」「〜な人いませんか？」「〜な人いるんじゃないかな」
 
 投稿文だけ出力してください。"""
 
-    return _call_claude(prompt)
+    post_text = _call_claude(prompt)
+    return post_text, hypothesis
 
 def get_todays_keywords():
     """曜日ベースで3キーワードを選択（7日で21キーワードを網羅）"""
@@ -295,28 +329,34 @@ def main(post_count=3):
 
     all_posts = []  # リサーチなし
 
+    # 今回検証する仮説を取得
+    _, current_hypothesis = get_pdca_instructions()
+    if current_hypothesis:
+        print(f"\n🧪 検証仮説: {current_hypothesis['content'][:60]}")
+
     print(f"\n✍️ 投稿文を{post_count}本生成中...\n")
 
     generated = []
 
-    # 偶数日は1本目をストーリー投稿に差し替え
-    use_story_today = (datetime.now().day % 2 == 0)
+    # 日付ベースでPOST_TYPESをずらして毎日違うタイプを生成
+    day_offset = datetime.now().day % len(POST_TYPES)
 
     for i in range(post_count):
-        if i == 0 and use_story_today:
-            post_type_info = POST_TYPE_STORY
-        else:
-            post_type_info = POST_TYPES[i % len(POST_TYPES)]
-
-        post_text = generate_post_from_research(all_posts, i, post_type_override=post_type_info if (i == 0 and use_story_today) else None)
+        post_type_info = POST_TYPES[(day_offset + i) % len(POST_TYPES)]
+        post_text, used_hypothesis = generate_post_from_research(
+            all_posts, i, post_type_override=post_type_info, hypothesis=current_hypothesis
+        )
 
         if post_text:
-            generated.append({
+            entry = {
                 "index": i + 1,
                 "type": post_type_info["type"],
                 "label": post_type_info["label"],
                 "text": post_text
-            })
+            }
+            if used_hypothesis:
+                entry["hypothesis_id"] = used_hypothesis["id"]
+            generated.append(entry)
             print(f"【投稿 {i+1}/{post_count} - {post_type_info['label']}】")
             print(post_text)
             print("-" * 40)
