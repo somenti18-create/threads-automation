@@ -64,11 +64,22 @@ def check_and_switch_mode():
     except Exception as e:
         print(f"モード確認エラー: {e}")
 
-def morning_research():
-    """毎朝05:00 リサーチ→投稿文生成 (JST05:00 = UTC20:00)"""
+def morning_pdca_and_research():
+    """毎朝05:00 PDCA → skills更新 → 投稿文生成 (JST05:00 = UTC20:00)"""
     print(f"\n{'='*50}")
-    print(f"🌅 朝のリサーチ - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+    print(f"🌅 朝のPDCA＆生成 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     print(f"{'='*50}")
+
+    # 1. PDCA実行（skills更新まで含む）
+    try:
+        analyze()
+        run_pdca()
+        check_and_switch_mode()
+        print("✅ PDCA完了")
+    except Exception as e:
+        print(f"⚠️ PDCAエラー: {e}")
+
+    # 2. PDCA完了後に投稿文生成
     mode = get_mode()
     count = {"10posts": 10, "5posts": 5, "3posts": 3}.get(mode, 3)
     research(post_count=count)
@@ -88,11 +99,8 @@ def post_job():
     post_today_posts()
 
 def nightly_pdca():
-    """毎晩22:00 PDCA分析 (JST22:00 = UTC13:00)"""
-    print(f"\n🔄 夜間PDCA - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
-    analyze()
-    run_pdca()
-    check_and_switch_mode()
+    """※廃止 - PDCAは朝05:00に移動"""
+    pass
 
 def reschedule():
     """スケジュールをリセットして再設定"""
@@ -107,18 +115,15 @@ def setup_schedule():
     print(f"   モード: {mode} ({len(post_times)}投稿/日)")
     print(f"   投稿時間: {', '.join(post_times)}")
 
-    # 毎朝リサーチ JST 05:00 = UTC 20:00
-    schedule.every().day.at("20:00").do(morning_research)
+    # 毎朝 PDCA→生成 JST 05:00 = UTC 20:00
+    schedule.every().day.at("20:00").do(morning_pdca_and_research)
 
     # 朝のレポート JST 06:00 = UTC 21:00
     schedule.every().day.at("21:00").do(morning_report)
 
-    # 投稿スケジュール（1日10本・JST分散）
+    # 投稿スケジュール JST 07:00〜 (UTC 22:00〜)
     for t in post_times:
         schedule.every().day.at(t).do(post_job)
-
-    # 夜間PDCA JST 22:00 = UTC 13:00
-    schedule.every().day.at("13:00").do(nightly_pdca)
 
     # 問い合わせリプ検知 2時間ごと
     schedule.every(2).hours.do(run_inquiry_check)
