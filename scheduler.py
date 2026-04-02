@@ -3,6 +3,14 @@ import time
 import json
 import os
 from datetime import datetime
+
+# タイムゾーンをUTCに強制（JST環境でもUTC基準で動かす）
+os.environ["TZ"] = "UTC"
+try:
+    import time as _time
+    _time.tzset()
+except AttributeError:
+    pass  # Windowsでは tzset 不要
 from research_threads import main as research
 from post_to_threads import post_today_posts
 from analyze_posts import analyze
