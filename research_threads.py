@@ -51,10 +51,16 @@ def get_writing_skills():
                 if samples:
                     samples_text = "\n\n【参考アカウントの実際の投稿（文体・構成・リズムをトレースすること）】\n" + "\n---\n".join(samples)
 
+            pain_points = data.get("persona_pain_points", [])
+            pain_text = ""
+            if pain_points:
+                pain_text = "\n\n【ターゲットが抱えているリアルな悩み（必ずどれか1つを投稿の核にすること）】\n" + "\n".join([f"・{p}" for p in pain_points])
+
             result = ""
             if target:
                 result += f"【ターゲット】{target}\n\n"
             result += f"【ルール】\n{rules_text}"
+            result += pain_text
             result += samples_text
             return result
     except:
@@ -253,7 +259,7 @@ def generate_post_from_research(research_posts, post_index, post_type_override=N
     else:
         research_section = "あなたの知識と経験をもとに、"
 
-    prompt = f"""あなたはSNSマーケターのコピーライターです。
+    prompt = f"""あなたはSNSコピーライターです。
 
 {research_section}
 このプロフィールの人物として自然なThreads投稿文を1つ作成してください。
@@ -264,12 +270,12 @@ def generate_post_from_research(research_posts, post_index, post_type_override=N
 【今回の投稿スタイル】
 {style}
 {pdca_section}{skills_section}
-条件：
-- 140〜300文字
-- 宣伝臭なし、価値・共感・ストーリー重視
-- ハッシュタグなし
-- 改行を効果的に使う
-- コピペ感なし、本人が書いたような自然さ
+【絶対に守る条件】
+- 文字数は80〜130文字（厳守。超えたら書き直し）
+- 1文は10文字以下。短く切る
+- 改行は1〜2行ごと
+- 説明しない。感情と事実だけ
+- ハッシュタグなし・宣伝臭なし
 
 投稿文だけ出力してください。"""
 
