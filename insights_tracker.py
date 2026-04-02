@@ -123,6 +123,12 @@ def run_insights_check():
             history_ids[(post_id, check_hour)] = True
             updated = True
             print(f"📊 {check_hour}時間後計測: {post_text[:30]}... views:{stats['views']} likes:{stats['likes']}")
+            # Googleスプレッドシートに書き込み
+            try:
+                from sheets_logger import log_insight
+                log_insight(record)
+            except Exception:
+                pass
 
     if updated:
         save_history(history)
@@ -450,6 +456,12 @@ def record_follower_count():
             json.dump(history, f, ensure_ascii=False, indent=2)
 
         print(f"👥 フォロワー数記録: {count:,}")
+        # Googleスプレッドシートに書き込み
+        try:
+            from sheets_logger import log_follower
+            log_follower(count)
+        except Exception:
+            pass
     except Exception as e:
         print(f"⚠️ フォロワー記録エラー: {e}")
 

@@ -321,7 +321,14 @@ def run_pdca():
     print(analysis)
 
     # 仮説保存
-    save_hypothesis(analysis, posts)
+    entry = save_hypothesis(analysis, posts)
+
+    # Googleスプレッドシートに書き込み
+    try:
+        from sheets_logger import log_pdca
+        log_pdca(analysis, entry.get("hypothesis", ""), entry.get("top_score", 0))
+    except Exception as e:
+        print(f"⚠️ PDCA書き込みエラー: {e}")
 
     # ライティングスキルを自動更新
     update_writing_skills(analysis)
