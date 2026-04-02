@@ -16,7 +16,7 @@ except Exception:
 token = os.environ["THREADS_ACCESS_TOKEN"]
 HISTORY_FILE = "insights_history.json"
 METRICS = ["views", "likes", "replies", "reposts", "quotes", "shares", "clicks"]
-CHECK_HOURS = [1, 6, 24]
+CHECK_HOURS = [1, 3, 6, 12, 24]
 
 
 def get_insights(post_id):
