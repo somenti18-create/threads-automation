@@ -214,22 +214,14 @@ def get_todays_keywords():
     return KEYWORDS[start:start + 1]
 
 def main(post_count=10):
-    todays_keywords = get_todays_keywords()
     print("=" * 50)
-    print(f"🔍 Threadsリサーチ開始 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
-    print(f"   本日のキーワード: {', '.join(todays_keywords)}")
-    print(f"   生成本数: {post_count}本")
+    print(f"✍️ 投稿文生成開始 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
+    print(f"   生成本数: {post_count}本（リサーチなし・writing_skills+PDCA基準）")
     print("=" * 50)
 
-    all_posts = []
+    all_posts = []  # リサーチなし
 
-    for keyword in todays_keywords:
-        posts = scrape_threads(keyword, max_posts=8)
-        all_posts.extend(posts)
-        print(f"  {keyword}: {len(posts)}件取得")
-
-    print(f"\n合計 {len(all_posts)} 件収集\n")
-    print(f"✍️ 投稿文を{post_count}本生成中...\n")
+    print(f"\n✍️ 投稿文を{post_count}本生成中...\n")
 
     generated = []
 
