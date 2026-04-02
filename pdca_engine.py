@@ -302,57 +302,63 @@ def run_pdca():
 
 
 def update_writing_skills(analysis_text):
-    """PDCA分析から新しいライティングルールを抽出してwriting_skills.jsonに追記"""
-    prompt = f"""以下のPDCA分析から、今後の投稿に永続的に適用すべきライティングルールを抽出してください。
+    """PDCA分析を元に、既存ルール全体を見直して矛盾のない最新ルール一覧に再生成"""
+    import re
 
+    # 既存ルールを読み込む
+    try:
+        with open("writing_skills.json", "r", encoding="utf-8") as f:
+            skills = json.load(f)
+        existing_rules = skills.get("rules", [])
+    except:
+        existing_rules = []
+
+    existing_text = "\n".join([f"- {r}" for r in existing_rules]) if existing_rules else "（まだルールなし）"
+
+    prompt = f"""あなたはThreads投稿のライティングコーチです。
+
+以下の「既存のライティングルール」と「今回のPDCA分析」を照らし合わせて、
+矛盾・重複を解消した「最新の正しいルール一覧」を再生成してください。
+
+【既存のライティングルール】
+{existing_text}
+
+【今回のPDCA分析】
 {analysis_text}
 
 条件：
-- 既存ルールと重複しないもののみ
-- 具体的で実行可能な内容
-- 最大3つまで
-- ルールがなければ空リストを返す
+- 既存ルールと新分析を統合して、矛盾がないルール一覧を作る
+- 古いルールが新分析で否定された場合は新しいほうを採用する
+- 具体的で実行可能な内容のみ
+- 最大10個まで
+- ルールの順番は重要度が高い順
 
 JSON形式で出力してください：
-{{"new_rules": ["ルール1", "ルール2"]}}
+{{"rules": ["ルール1", "ルール2", "..."]}}
 
 JSONのみ出力してください。"""
 
     try:
         response = _call_claude(prompt)
-        # JSON部分を抽出
-        import re
         match = re.search(r'\{.*\}', response, re.DOTALL)
         if not match:
             return
         data = json.loads(match.group())
-        new_rules = data.get("new_rules", [])
+        new_rules = data.get("rules", [])
 
         if not new_rules:
             return
 
-        # 既存ルールを読み込んで追記
-        try:
-            with open("writing_skills.json", "r", encoding="utf-8") as f:
-                skills = json.load(f)
-        except:
-            skills = {"rules": []}
+        skills = {
+            "rules": new_rules,
+            "updated": datetime.now().strftime("%Y-%m-%d")
+        }
+        with open("writing_skills.json", "w", encoding="utf-8") as f:
+            json.dump(skills, f, ensure_ascii=False, indent=2)
 
-        existing = skills.get("rules", [])
-        added = []
-        for rule in new_rules:
-            if rule not in existing:
-                existing.append(rule)
-                added.append(rule)
-
-        if added:
-            skills["rules"] = existing
-            skills["updated"] = datetime.now().strftime("%Y-%m-%d")
-            with open("writing_skills.json", "w", encoding="utf-8") as f:
-                json.dump(skills, f, ensure_ascii=False, indent=2)
-            print(f"\n✅ ライティングスキル更新: {len(added)}件追加")
-            for r in added:
-                print(f"  + {r}")
+        print(f"\n✅ ライティングスキル再生成完了: {len(new_rules)}件")
+        for r in new_rules:
+            print(f"  ・{r}")
 
     except Exception as e:
         print(f"⚠️ ライティングスキル更新失敗: {e}")
