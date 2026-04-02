@@ -84,7 +84,7 @@ POST_TYPES = [
 PROFILE = """
 名前: 小野寺壮史 / POLYNK (@line_polynk)
 ビジネス:
-- 個人事業主・小規模店舗向けSNS運用代行（LINE / Threads / YouTube / TikTok）
+- 個人事業主・小規模店舗向けSNS運用代行（LINE / Threads / Instagram / YouTube / TikTok）
 - 業務効率化・自動化代行（Claude Codeでシステム構築）
   → LINE自動化・Threads自動投稿・請求書自動作成など
 差別化: SNSのフォロワー数ではなく「売上に直結する導線設計」にフォーカス
