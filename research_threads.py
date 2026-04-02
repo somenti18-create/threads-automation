@@ -37,9 +37,26 @@ def get_writing_skills():
             target = data.get("target", "")
             rules = data.get("rules", [])
             rules_text = "\n".join([f"- {r}" for r in rules])
+
+            # 参考投稿サンプルを取得
+            ref_posts = data.get("reference_posts", [])
+            samples_text = ""
+            if ref_posts:
+                samples = []
+                for ref in ref_posts:
+                    account = ref.get("account", "")
+                    note = ref.get("note", "")
+                    for s in ref.get("samples", []):
+                        samples.append(f"[{account} / {note}]\n{s}")
+                if samples:
+                    samples_text = "\n\n【参考アカウントの実際の投稿（文体・構成・リズムをトレースすること）】\n" + "\n---\n".join(samples)
+
+            result = ""
             if target:
-                return f"【ターゲット】{target}\n\n【ルール】\n{rules_text}"
-            return rules_text
+                result += f"【ターゲット】{target}\n\n"
+            result += f"【ルール】\n{rules_text}"
+            result += samples_text
+            return result
     except:
         return ""
 
