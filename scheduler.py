@@ -71,7 +71,10 @@ def morning_report():
     run_daily_report()
 
 def post_job():
-    """投稿時間: 1本投稿"""
+    """投稿時間: 1本投稿（POSTING_ENABLED=falseで停止）"""
+    if os.environ.get("POSTING_ENABLED", "true").lower() == "false":
+        print(f"\n⏸️ 投稿停止中 (POSTING_ENABLED=false)")
+        return
     mode = get_mode()
     print(f"\n📤 {datetime.now().strftime('%H:%M')} 投稿実行 [{mode}]")
     post_today_posts()
