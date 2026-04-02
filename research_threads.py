@@ -86,16 +86,9 @@ KEYWORDS = [
 
 # 投稿タイプ定義（コンサル型 vs 実験者型を混ぜてPDCAで検証）
 POST_TYPES = [
-    {"type": "consultant", "label": "コンサル型", "description": "クライアントの実績・支援事例を語る。月商70万→700万などの結果を主役にする"},
-    {"type": "experimenter", "label": "実験者型", "description": "自分が実験台。このシステム構築・AI自動化・Threads運用の試行錯誤をリアルに語る"},
-    {"type": "consultant", "label": "コンサル型", "description": "SNS×売上向上のノウハウ・知識を提供する。読者が「なるほど」と思える知見"},
-    {"type": "experimenter", "label": "実験者型", "description": "今日の失敗・気づき・驚いた結果をリアルタイムで報告する形式"},
-    {"type": "consultant", "label": "コンサル型", "description": "よくある間違い（❌）と正解（✅）を対比で見せる教育型"},
-    {"type": "experimenter", "label": "実験者型", "description": "AIやClaudeで自動化した具体的な話。何時間が何分になったなどの数字を出す"},
-    {"type": "consultant", "label": "コンサル型", "description": "共感型。経営者・SNS担当者が「あるある」と思う悩みを代弁してから解決策を示す"},
-    {"type": "experimenter", "label": "実験者型", "description": "Threadsで実際に試した投稿の結果報告。伸びた理由・伸びなかった理由を分析して公開"},
-    {"type": "consultant", "label": "コンサル型", "description": "POLYNKの価値観・ミッションを語る。数字より売上、SNSは手段という想い"},
-    {"type": "experimenter", "label": "実験者型", "description": "24歳がAIで仕事を自動化していくリアルな過程。今日何を作ったか・何が変わったか"},
+    {"type": "viral", "label": "伸ばす投稿", "description": "整体・サロン・パーソナルトレーナーが抱える悩みを感情ベースで代弁する。説明なし。最後は「〜な人いますか？」で問いかけ。80〜130文字・1文10文字以下・改行多め"},
+    {"type": "connect", "label": "繋がり投稿", "description": "「整体・サロン・パーソナルトレーナーでSNSや集客に悩んでる方と繋がりたい！」形式。箇条書き3つ以内。最後は「繋がりましょう！！」。80〜130文字"},
+    {"type": "viral", "label": "伸ばす投稿", "description": "自分の体験・失敗・気づきを感情ベースで短く語る。「〜やってみた」「〜で気づいた」形式。最後は問いかけ。80〜130文字・1文10文字以下・改行多め"},
 ]
 
 PROFILE = """
