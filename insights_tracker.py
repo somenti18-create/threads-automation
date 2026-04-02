@@ -16,7 +16,7 @@ except Exception:
 token = os.environ["THREADS_ACCESS_TOKEN"]
 HISTORY_FILE = "insights_history.json"
 METRICS = ["views", "likes", "replies", "reposts", "quotes", "shares", "clicks"]
-CHECK_HOURS = [1, 3, 6, 12, 24]
+CHECK_HOURS = [1, 3, 6, 12, 24, 168]  # 168h = 1week
 
 
 def get_insights(post_id):
@@ -154,6 +154,17 @@ def get_summary_for_pdca(days=7):
             f" reposts:{avg['reposts']} quotes:{avg['quotes']} shares:{avg['shares']} clicks:{avg['clicks']}"
             f"\n  📊 閲覧→いいね率:{avg['like_rate']}% / 閲覧→リプ率:{avg['reply_rate']}% / いいね→リプ率:{avg['reply_per_like']}%"
         )
+
+    # 伸び計測（各ポイント間の増加量）
+    hour_list = sorted(by_hour.keys())
+    if len(hour_list) >= 2:
+        lines.append("\n▼ 時間帯別 views 伸び（平均）")
+        for i in range(1, len(hour_list)):
+            h_prev = hour_list[i - 1]
+            h_curr = hour_list[i]
+            if h_prev in by_hour and h_curr in by_hour:
+                diff = round(by_hour[h_curr]["avg"]["views"] - by_hour[h_prev]["avg"]["views"], 1)
+                lines.append(f"  {h_prev}h→{h_curr}h: +{diff} views")
 
     # 伸びた投稿TOP3（24時間後のviews順）
     top = sorted(
