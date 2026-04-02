@@ -86,7 +86,7 @@ PROFILE = """
 ビジネス:
 - 個人事業主・小規模店舗向けSNS運用代行（LINE / Threads / Instagram / YouTube / TikTok）
 - 業務効率化・自動化代行（Claude Codeでシステム構築）
-  → LINE自動化・Threads自動投稿・請求書自動作成など
+  → LINE自動化・Threads自動投稿・請求書自動作成・予約管理・在庫管理など雑務全般
 差別化: SNSのフォロワー数ではなく「売上に直結する導線設計」にフォーカス
 実績:
 - 整体・サロン・飲食など個人店のLINE×SNS導線を構築
