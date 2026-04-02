@@ -91,6 +91,9 @@ POST_TYPES = [
     {"type": "viral", "label": "伸ばす投稿", "description": "自分の体験・失敗・気づきを感情ベースで短く語る。「〜やってみた」「〜で気づいた」形式。最後は問いかけ。80〜130文字・1文10文字以下・改行多め"},
 ]
 
+# 2日に1回差し込む「元公務員ストーリー」タイプ
+POST_TYPE_STORY = {"type": "viral", "label": "ストーリー投稿", "description": "元公務員が今ではITで生計を立てているという自分のストーリーを感情ベースで短く語る。「公務員を辞めた」「安定を捨てた」など転換のリアルを書く。説明・宣伝ゼロ。最後は共感を誘う問いかけ。80〜130文字・1文10文字以下・改行多め"}
+
 PROFILE = """
 名前: 小野寺壮史 / POLYNK (@line_polynk)
 ビジネス:
@@ -165,9 +168,9 @@ def scrape_threads(keyword, max_posts=8):
         print(f"⚠️ スクレイピングエラー ({keyword}): {e}")
         return []
 
-def generate_post_from_research(research_posts, post_index):
+def generate_post_from_research(research_posts, post_index, post_type_override=None):
     """リサーチ結果を元にClaudeで投稿文を生成"""
-    post_type_info = POST_TYPES[post_index % len(POST_TYPES)]
+    post_type_info = post_type_override if post_type_override else POST_TYPES[post_index % len(POST_TYPES)]
     style = f"【{post_type_info['label']}】{post_type_info['description']}"
 
     # PDCAからの最新指示を取得
@@ -235,11 +238,18 @@ def main(post_count=3):
 
     generated = []
 
+    # 偶数日は1本目をストーリー投稿に差し替え
+    use_story_today = (datetime.now().day % 2 == 0)
+
     for i in range(post_count):
-        post_text = generate_post_from_research(all_posts, i)
+        if i == 0 and use_story_today:
+            post_type_info = POST_TYPE_STORY
+        else:
+            post_type_info = POST_TYPES[i % len(POST_TYPES)]
+
+        post_text = generate_post_from_research(all_posts, i, post_type_override=post_type_info if (i == 0 and use_story_today) else None)
 
         if post_text:
-            post_type_info = POST_TYPES[i % len(POST_TYPES)]
             generated.append({
                 "index": i + 1,
                 "type": post_type_info["type"],
