@@ -34,8 +34,12 @@ def get_writing_skills():
     try:
         with open("writing_skills.json", "r", encoding="utf-8") as f:
             data = json.load(f)
+            target = data.get("target", "")
             rules = data.get("rules", [])
-            return "\n".join([f"- {r}" for r in rules])
+            rules_text = "\n".join([f"- {r}" for r in rules])
+            if target:
+                return f"【ターゲット】{target}\n\n【ルール】\n{rules_text}"
+            return rules_text
     except:
         return ""
 
