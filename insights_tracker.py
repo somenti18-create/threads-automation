@@ -91,12 +91,30 @@ def run_insights_check():
             if (post_id, check_hour) in history_ids:
                 continue
 
+            # 投稿タイプを取得
+            post_type = ""
+            post_char_count = 0
+            for p in posts:
+                if p["index"] == entry.get("index"):
+                    post_type = p.get("label", "")
+                    post_char_count = len(p.get("text", ""))
+                    break
+
+            # 投稿時間帯・曜日
+            jst_hour = (posted_at.hour + 9) % 24
+            weekday_names = ["月", "火", "水", "木", "金", "土", "日"]
+            weekday = weekday_names[posted_at.weekday()]
+
             # インサイト取得
             stats = get_insights(post_id)
             record = {
                 "post_id": post_id,
                 "post_text": post_text,
+                "post_type": post_type,
+                "post_char_count": post_char_count,
                 "posted_at": entry["timestamp"],
+                "jst_hour": jst_hour,
+                "weekday": weekday,
                 "hours": check_hour,
                 "measured_at": now.isoformat(),
                 **stats
@@ -251,7 +269,220 @@ def get_keyword_analysis(days=14):
     return "\n".join(lines)
 
 
+def get_time_analysis(days=14):
+    """投稿時間帯別パフォーマンス分析（24時間後データ）"""
+    history = load_history()
+    if not history:
+        return ""
+
+    cutoff = datetime.now() - timedelta(days=days)
+    records = [
+        e for e in history
+        if e["hours"] == 24 and datetime.fromisoformat(e["posted_at"]) >= cutoff
+        and "jst_hour" in e
+    ]
+    if not records:
+        return ""
+
+    hour_stats = {}
+    for r in records:
+        h = r["jst_hour"]
+        if h not in hour_stats:
+            hour_stats[h] = {"views": [], "likes": [], "replies": []}
+        hour_stats[h]["views"].append(r.get("views", 0))
+        hour_stats[h]["likes"].append(r.get("likes", 0))
+        hour_stats[h]["replies"].append(r.get("replies", 0))
+
+    lines = [f"\n【投稿時間帯別パフォーマンス（直近{days}日・24時間後）】"]
+    for h in sorted(hour_stats.keys()):
+        s = hour_stats[h]
+        n = len(s["views"])
+        avg_v = round(sum(s["views"]) / n, 1)
+        avg_l = round(sum(s["likes"]) / n, 1)
+        avg_r = round(sum(s["replies"]) / n, 1)
+        lines.append(f"  JST {h:02d}時台 ({n}投稿): views:{avg_v} likes:{avg_l} replies:{avg_r}")
+
+    return "\n".join(lines)
+
+
+def get_type_analysis(days=14):
+    """投稿タイプ別パフォーマンス比較（24時間後データ）"""
+    history = load_history()
+    if not history:
+        return ""
+
+    cutoff = datetime.now() - timedelta(days=days)
+    records = [
+        e for e in history
+        if e["hours"] == 24 and datetime.fromisoformat(e["posted_at"]) >= cutoff
+        and e.get("post_type")
+    ]
+    if not records:
+        return ""
+
+    type_stats = {}
+    for r in records:
+        t = r["post_type"]
+        if t not in type_stats:
+            type_stats[t] = {"views": [], "likes": [], "replies": []}
+        type_stats[t]["views"].append(r.get("views", 0))
+        type_stats[t]["likes"].append(r.get("likes", 0))
+        type_stats[t]["replies"].append(r.get("replies", 0))
+
+    lines = [f"\n【投稿タイプ別パフォーマンス（直近{days}日・24時間後）】"]
+    for t, s in type_stats.items():
+        n = len(s["views"])
+        avg_v = round(sum(s["views"]) / n, 1)
+        avg_l = round(sum(s["likes"]) / n, 1)
+        avg_r = round(sum(s["replies"]) / n, 1)
+        lines.append(f"  【{t}】({n}投稿): views:{avg_v} likes:{avg_l} replies:{avg_r}")
+
+    return "\n".join(lines)
+
+
+def get_weekday_analysis(days=28):
+    """曜日別パフォーマンス分析（24時間後データ）"""
+    history = load_history()
+    if not history:
+        return ""
+
+    cutoff = datetime.now() - timedelta(days=days)
+    records = [
+        e for e in history
+        if e["hours"] == 24 and datetime.fromisoformat(e["posted_at"]) >= cutoff
+        and e.get("weekday")
+    ]
+    if not records:
+        return ""
+
+    weekday_order = ["月", "火", "水", "木", "金", "土", "日"]
+    day_stats = {d: {"views": [], "likes": [], "replies": []} for d in weekday_order}
+    for r in records:
+        d = r["weekday"]
+        if d in day_stats:
+            day_stats[d]["views"].append(r.get("views", 0))
+            day_stats[d]["likes"].append(r.get("likes", 0))
+            day_stats[d]["replies"].append(r.get("replies", 0))
+
+    lines = [f"\n【曜日別パフォーマンス（直近{days}日・24時間後）】"]
+    for d in weekday_order:
+        s = day_stats[d]
+        if not s["views"]:
+            continue
+        n = len(s["views"])
+        avg_v = round(sum(s["views"]) / n, 1)
+        avg_l = round(sum(s["likes"]) / n, 1)
+        avg_r = round(sum(s["replies"]) / n, 1)
+        lines.append(f"  {d}曜日 ({n}投稿): views:{avg_v} likes:{avg_l} replies:{avg_r}")
+
+    return "\n".join(lines)
+
+
+def get_charcount_analysis(days=14):
+    """投稿文字数と数値の相関分析（24時間後データ）"""
+    history = load_history()
+    if not history:
+        return ""
+
+    cutoff = datetime.now() - timedelta(days=days)
+    records = [
+        e for e in history
+        if e["hours"] == 24 and datetime.fromisoformat(e["posted_at"]) >= cutoff
+        and e.get("post_char_count", 0) > 0
+    ]
+    if not records:
+        return ""
+
+    # 文字数をバケットに分類
+    buckets = {"〜80字": [], "81〜130字": [], "131〜200字": [], "201字〜": []}
+    for r in records:
+        c = r["post_char_count"]
+        if c <= 80:
+            buckets["〜80字"].append(r)
+        elif c <= 130:
+            buckets["81〜130字"].append(r)
+        elif c <= 200:
+            buckets["131〜200字"].append(r)
+        else:
+            buckets["201字〜"].append(r)
+
+    lines = [f"\n【文字数別パフォーマンス（直近{days}日・24時間後）】"]
+    for label, recs in buckets.items():
+        if not recs:
+            continue
+        n = len(recs)
+        avg_v = round(sum(r.get("views", 0) for r in recs) / n, 1)
+        avg_l = round(sum(r.get("likes", 0) for r in recs) / n, 1)
+        avg_r = round(sum(r.get("replies", 0) for r in recs) / n, 1)
+        lines.append(f"  {label} ({n}投稿): views:{avg_v} likes:{avg_l} replies:{avg_r}")
+
+    return "\n".join(lines)
+
+
+FOLLOWER_FILE = "follower_history.json"
+
+
+def record_follower_count():
+    """フォロワー数を記録（週1回呼ぶ）"""
+    token_val = token
+    user_id = "34788313010783679"
+    try:
+        res = requests.get(
+            f"https://graph.threads.net/v1.0/{user_id}",
+            params={"fields": "followers_count", "access_token": token_val}
+        ).json()
+        count = res.get("followers_count", 0)
+        if count == 0:
+            return
+
+        try:
+            with open(FOLLOWER_FILE, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except:
+            history = []
+
+        history.append({
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "followers": count
+        })
+
+        with open(FOLLOWER_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+
+        print(f"👥 フォロワー数記録: {count:,}")
+    except Exception as e:
+        print(f"⚠️ フォロワー記録エラー: {e}")
+
+
+def get_follower_trend():
+    """フォロワー数の推移サマリー"""
+    try:
+        with open(FOLLOWER_FILE, "r", encoding="utf-8") as f:
+            history = json.load(f)
+    except:
+        return ""
+
+    if len(history) < 2:
+        return ""
+
+    recent = history[-8:]  # 直近8週分
+    lines = ["\n【フォロワー数の推移】"]
+    for i, entry in enumerate(recent):
+        diff = ""
+        if i > 0:
+            delta = entry["followers"] - recent[i - 1]["followers"]
+            diff = f" ({'+' if delta >= 0 else ''}{delta:,})"
+        lines.append(f"  {entry['date']}: {entry['followers']:,}人{diff}")
+
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     run_insights_check()
     print("\n" + get_summary_for_pdca())
     print(get_keyword_analysis())
+    print(get_time_analysis())
+    print(get_type_analysis())
+    print(get_weekday_analysis())
+    print(get_charcount_analysis())
+    print(get_follower_trend())

@@ -127,14 +127,25 @@ def analyze_and_generate_hypothesis(posts_with_insights):
         for p in bottom
     ])
 
-    # 時系列インサイトサマリーとキーワード分析を取得
+    # 時系列インサイトサマリーと各種分析を取得
     try:
-        from insights_tracker import get_summary_for_pdca, get_keyword_analysis
+        from insights_tracker import (
+            get_summary_for_pdca, get_keyword_analysis,
+            get_time_analysis, get_type_analysis,
+            get_weekday_analysis, get_charcount_analysis,
+            get_follower_trend
+        )
         timeline_summary = get_summary_for_pdca(days=7)
         keyword_analysis = get_keyword_analysis(days=14)
-    except:
-        timeline_summary = ""
-        keyword_analysis = ""
+        time_analysis = get_time_analysis(days=14)
+        type_analysis = get_type_analysis(days=14)
+        weekday_analysis = get_weekday_analysis(days=28)
+        charcount_analysis = get_charcount_analysis(days=14)
+        follower_trend = get_follower_trend()
+    except Exception as e:
+        print(f"⚠️ 分析取得エラー: {e}")
+        timeline_summary = keyword_analysis = time_analysis = ""
+        type_analysis = weekday_analysis = charcount_analysis = follower_trend = ""
 
     # 過去の仮説を読み込む
     past_hypotheses = load_past_hypotheses()
@@ -151,6 +162,11 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 
 {timeline_summary if timeline_summary else ""}
 {keyword_analysis if keyword_analysis else ""}
+{time_analysis if time_analysis else ""}
+{type_analysis if type_analysis else ""}
+{weekday_analysis if weekday_analysis else ""}
+{charcount_analysis if charcount_analysis else ""}
+{follower_trend if follower_trend else ""}
 
 
 【エンゲージメント上位の投稿】
