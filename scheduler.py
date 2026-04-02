@@ -16,7 +16,7 @@ from inquiry_detector import run_inquiry_check
 POST_TIMES = {
     "10posts": ["22:00", "23:30", "01:00", "02:30", "04:00", "06:00", "08:00", "10:00", "12:00", "13:30"],
     "5posts":  ["22:00", "01:00", "04:00", "08:00", "12:00"],
-    "3posts":  ["23:00", "04:00", "11:00"],
+    "3posts":  ["22:00", "03:00", "12:00"],  # JST 7:00 / 12:00 / 21:00
 }
 
 # モード切替のしきい値
@@ -26,7 +26,7 @@ THRESHOLD_3 = 100000   # 10万で5→3投稿
 def get_mode():
     try:
         with open("mode.json", "r") as f:
-            return json.load(f).get("mode", "10posts")
+            return json.load(f).get("mode", "3posts")
     except:
         return "10posts"
 
@@ -61,7 +61,7 @@ def morning_research():
     print(f"🌅 朝のリサーチ - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     print(f"{'='*50}")
     mode = get_mode()
-    count = {"10posts": 10, "5posts": 5, "3posts": 3}[mode]
+    count = {"10posts": 10, "5posts": 5, "3posts": 3}.get(mode, 3)
     research(post_count=count)
 
 def morning_report():
