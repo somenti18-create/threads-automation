@@ -213,7 +213,7 @@ def get_todays_keywords():
     start = weekday * 3
     return KEYWORDS[start:start + 1]
 
-def main(post_count=10):
+def main(post_count=3):
     print("=" * 50)
     print(f"✍️ 投稿文生成開始 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     print(f"   生成本数: {post_count}本（リサーチなし・writing_skills+PDCA基準）")
