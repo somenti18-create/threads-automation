@@ -127,6 +127,15 @@ def analyze_and_generate_hypothesis(posts_with_insights):
         for p in bottom
     ])
 
+    # 時系列インサイトサマリーとキーワード分析を取得
+    try:
+        from insights_tracker import get_summary_for_pdca, get_keyword_analysis
+        timeline_summary = get_summary_for_pdca(days=7)
+        keyword_analysis = get_keyword_analysis(days=14)
+    except:
+        timeline_summary = ""
+        keyword_analysis = ""
+
     # 過去の仮説を読み込む
     past_hypotheses = load_past_hypotheses()
     past_text = ""
@@ -139,6 +148,10 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 
     prompt = f"""あなたはSNSマーケターのデータアナリストです。
 以下のThreads投稿データを分析して、PDCAの「C（Check）→A（Act）」を行ってください。
+
+{timeline_summary if timeline_summary else ""}
+{keyword_analysis if keyword_analysis else ""}
+
 
 【エンゲージメント上位の投稿】
 {top_text}
@@ -258,6 +271,13 @@ def run_pdca():
     print("=" * 50)
     print(f"🔄 PDCA実行 - {datetime.now().strftime('%Y/%m/%d %H:%M')}")
     print("=" * 50)
+
+    # 時系列インサイトチェック（最新データを取得）
+    try:
+        from insights_tracker import run_insights_check, get_summary_for_pdca
+        run_insights_check()
+    except Exception as e:
+        print(f"⚠️ 時系列チェックエラー: {e}")
 
     # インサイト取得
     print("\n📊 インサイト取得中...")

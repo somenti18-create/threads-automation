@@ -9,6 +9,7 @@ from analyze_posts import analyze
 from pdca_engine import run_pdca
 from daily_report import run_daily_report
 from inquiry_detector import run_inquiry_check
+from insights_tracker import run_insights_check
 
 # 投稿時間パターン（UTC基準 = JST-9時間）
 # JST 07:00 = UTC 22:00(前日), JST 08:30 = UTC 23:30(前日) → 繰り上げて翌日分で管理
@@ -110,6 +111,9 @@ def setup_schedule():
 
     # 問い合わせリプ検知 2時間ごと
     schedule.every(2).hours.do(run_inquiry_check)
+
+    # インサイト時系列チェック 1時間ごと
+    schedule.every(1).hours.do(run_insights_check)
 
     print(f"\n待機中... (Ctrl+C で停止)\n")
 
