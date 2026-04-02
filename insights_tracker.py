@@ -135,6 +135,14 @@ def get_summary_for_pdca(days=7):
         avg = {}
         for m in METRICS:
             avg[m] = round(sum(e.get(m, 0) for e in records) / len(records), 1)
+
+        # 比率計算
+        views = avg["views"] or 1  # ゼロ除算防止
+        likes = avg["likes"] or 1
+        avg["like_rate"] = round(avg["likes"] / views * 100, 2)      # 閲覧→いいね率(%)
+        avg["reply_rate"] = round(avg["replies"] / views * 100, 2)    # 閲覧→リプ率(%)
+        avg["reply_per_like"] = round(avg["replies"] / likes * 100, 2)  # いいね→リプ率(%)
+
         by_hour[h] = {"avg": avg, "count": len(records)}
 
     lines = [f"【直近{days}日間のインサイト時系列サマリー】"]
@@ -144,6 +152,7 @@ def get_summary_for_pdca(days=7):
             f"\n▼ 投稿{h}時間後（{data['count']}投稿の平均）"
             f"\n  views:{avg['views']} likes:{avg['likes']} replies:{avg['replies']}"
             f" reposts:{avg['reposts']} quotes:{avg['quotes']} shares:{avg['shares']} clicks:{avg['clicks']}"
+            f"\n  📊 閲覧→いいね率:{avg['like_rate']}% / 閲覧→リプ率:{avg['reply_rate']}% / いいね→リプ率:{avg['reply_per_like']}%"
         )
 
     # 伸びた投稿TOP3（24時間後のviews順）
