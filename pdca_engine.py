@@ -287,6 +287,9 @@ def run_pdca():
     # 仮説保存
     save_hypothesis(analysis, posts)
 
+    # ライティングスキルを自動更新
+    update_writing_skills(analysis)
+
     # 次の投稿指示を取得して表示
     instructions = get_current_instructions()
     if instructions:
@@ -296,6 +299,63 @@ def run_pdca():
         print(instructions)
 
     return analysis
+
+
+def update_writing_skills(analysis_text):
+    """PDCA分析から新しいライティングルールを抽出してwriting_skills.jsonに追記"""
+    prompt = f"""以下のPDCA分析から、今後の投稿に永続的に適用すべきライティングルールを抽出してください。
+
+{analysis_text}
+
+条件：
+- 既存ルールと重複しないもののみ
+- 具体的で実行可能な内容
+- 最大3つまで
+- ルールがなければ空リストを返す
+
+JSON形式で出力してください：
+{{"new_rules": ["ルール1", "ルール2"]}}
+
+JSONのみ出力してください。"""
+
+    try:
+        response = _call_claude(prompt)
+        # JSON部分を抽出
+        import re
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if not match:
+            return
+        data = json.loads(match.group())
+        new_rules = data.get("new_rules", [])
+
+        if not new_rules:
+            return
+
+        # 既存ルールを読み込んで追記
+        try:
+            with open("writing_skills.json", "r", encoding="utf-8") as f:
+                skills = json.load(f)
+        except:
+            skills = {"rules": []}
+
+        existing = skills.get("rules", [])
+        added = []
+        for rule in new_rules:
+            if rule not in existing:
+                existing.append(rule)
+                added.append(rule)
+
+        if added:
+            skills["rules"] = existing
+            skills["updated"] = datetime.now().strftime("%Y-%m-%d")
+            with open("writing_skills.json", "w", encoding="utf-8") as f:
+                json.dump(skills, f, ensure_ascii=False, indent=2)
+            print(f"\n✅ ライティングスキル更新: {len(added)}件追加")
+            for r in added:
+                print(f"  + {r}")
+
+    except Exception as e:
+        print(f"⚠️ ライティングスキル更新失敗: {e}")
 
 if __name__ == "__main__":
     run_pdca()

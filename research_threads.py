@@ -29,6 +29,16 @@ def get_pdca_instructions():
     except:
         return ""
 
+# ライティングスキルを読み込む
+def get_writing_skills():
+    try:
+        with open("writing_skills.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            rules = data.get("rules", [])
+            return "\n".join([f"- {r}" for r in rules])
+    except:
+        return ""
+
 KEYWORDS = [
     "Threads運用",
     "TikTok運用",
@@ -154,6 +164,13 @@ def generate_post_from_research(research_posts, post_index):
 {pdca_instructions}
 """ if pdca_instructions else ""
 
+    # ライティングスキルを取得
+    writing_skills = get_writing_skills()
+    skills_section = f"""
+【蓄積されたライティングルール（必ず守ること）】
+{writing_skills}
+""" if writing_skills else ""
+
     if research_posts:
         samples = "\n---\n".join([p["text"] for p in research_posts[:5]])
         research_section = f"""以下は今日Threadsで反応が取れていた投稿のサンプルです：
@@ -175,7 +192,7 @@ def generate_post_from_research(research_posts, post_index):
 
 【今回の投稿スタイル】
 {style}
-{pdca_section}
+{pdca_section}{skills_section}
 条件：
 - 140〜300文字
 - 宣伝臭なし、価値・共感・ストーリー重視
