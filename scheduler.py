@@ -24,7 +24,7 @@ from insights_tracker import run_insights_check, record_follower_count
 # 実用的にUTC表記: JST07:00→22:00, JST08:30→23:30, JST10:00→01:00...
 POST_TIMES = {
     "10posts": ["22:00", "23:30", "01:00", "02:30", "04:00", "06:00", "08:00", "10:00", "12:00", "13:30"],
-    "5posts":  ["22:00", "01:00", "04:00", "08:00", "12:00"],
+    "5posts":  ["01:00", "04:00", "08:00", "10:00", "12:00"],  # JST 10:00/13:00/17:00/19:00/21:00
     "3posts":  ["22:00", "03:00", "12:00"],  # JST 7:00 / 12:00 / 21:00
 }
 
@@ -37,7 +37,7 @@ def get_mode():
         with open("mode.json", "r") as f:
             return json.load(f).get("mode", "3posts")
     except:
-        return "10posts"
+        return "5posts"
 
 def set_mode(mode):
     with open("mode.json", "w") as f:
