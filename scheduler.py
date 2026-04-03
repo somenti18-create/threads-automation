@@ -136,8 +136,26 @@ def setup_schedule():
 
     print(f"\n待機中... (Ctrl+C で停止)\n")
 
+def ensure_today_posts():
+    """起動時にtoday_posts.jsonが空なら即生成（デプロイ後の復旧用）"""
+    try:
+        with open("today_posts.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        today = datetime.now().strftime("%Y-%m-%d")
+        if data.get("date") == today and data.get("posts"):
+            print(f"✅ today_posts.json 確認済み ({len(data['posts'])}本)")
+            return
+    except Exception:
+        pass
+
+    print("⚠️ today_posts.jsonが空 → 今日の投稿を即生成します")
+    mode = get_mode()
+    count = {"10posts": 10, "5posts": 5, "3posts": 3}.get(mode, 5)
+    research(post_count=count)
+
 def main():
     setup_schedule()
+    ensure_today_posts()
 
     while True:
         schedule.run_pending()
