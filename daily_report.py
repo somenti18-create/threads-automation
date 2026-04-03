@@ -1,4 +1,3 @@
-from config import data_path
 """
 1日1回レポート生成
 - その日の投稿の意図と結果
@@ -7,6 +6,7 @@ from config import data_path
 - 壁打ち用の問いかけ
 """
 
+from config import data_path
 import json
 import requests
 import os

@@ -1,4 +1,3 @@
-from config import data_path
 """
 投稿インサイト時系列トラッカー
 投稿後 1時間・6時間・24時間のデータを収集して蓄積する
@@ -8,6 +7,7 @@ import requests
 import json
 import os
 from datetime import datetime, timedelta
+from config import data_path
 try:
     from dotenv import load_dotenv
     load_dotenv()
