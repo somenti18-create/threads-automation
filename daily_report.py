@@ -1,3 +1,4 @@
+from config import data_path
 """
 1日1回レポート生成
 - その日の投稿の意図と結果
@@ -19,7 +20,7 @@ except Exception:
 
 token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
-REPORT_LOG = "report_log.json"
+REPORT_LOG = data_path("report_log.json")
 
 _claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
@@ -87,7 +88,7 @@ def get_today_posts_with_insights():
 
 def get_pdca_log():
     try:
-        with open("pdca_log.json", "r", encoding="utf-8") as f:
+        with open(data_path("pdca_log.json"), "r", encoding="utf-8") as f:
             log = json.load(f)
             return log[-1] if log else {}
     except:

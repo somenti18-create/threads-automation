@@ -1,3 +1,4 @@
+from config import data_path, ensure_data_file
 import json
 import re
 import os
@@ -36,7 +37,7 @@ def get_pdca_instructions():
 # ライティングスキルを読み込む
 def get_writing_skills():
     try:
-        with open("writing_skills.json", "r", encoding="utf-8") as f:
+        with open(ensure_data_file("writing_skills.json"), "r", encoding="utf-8") as f:
             data = json.load(f)
             target = data.get("target", "")
             rules = data.get("rules", [])
@@ -381,10 +382,10 @@ def main(post_count=3):
 
     # 前日分をyesterday_posts.jsonに退避（朝レポート用）
     try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "r", encoding="utf-8") as f:
             prev = json.load(f)
         if prev.get("log"):  # 投稿済みデータがある場合のみ退避
-            with open("yesterday_posts.json", "w", encoding="utf-8") as f:
+            with open(data_path("yesterday_posts.json"), "w", encoding="utf-8") as f:
                 json.dump(prev, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
@@ -396,7 +397,7 @@ def main(post_count=3):
         "posted": [],
         "log": []
     }
-    with open("today_posts.json", "w", encoding="utf-8") as f:
+    with open(data_path("today_posts.json"), "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     print(f"\n✅ {len(generated)}本の投稿文を today_posts.json に保存しました")

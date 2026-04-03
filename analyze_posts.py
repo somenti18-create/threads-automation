@@ -1,3 +1,4 @@
+from config import data_path
 import requests
 import json
 import os
@@ -90,7 +91,7 @@ def analyze():
         print(f"  ❤️ {best_post['likes']} いいね  👁 {best_post['views']} 表示")
 
     # JSONで保存
-    with open("posts_data.json", "w", encoding="utf-8") as f:
+    with open(data_path("posts_data.json"), "w", encoding="utf-8") as f:
         json.dump(all_stats, f, ensure_ascii=False, indent=2)
     print("\n✅ 詳細データを posts_data.json に保存しました")
 

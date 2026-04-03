@@ -11,6 +11,7 @@ try:
     _time.tzset()
 except AttributeError:
     pass  # Windowsでは tzset 不要
+from config import data_path
 from research_threads import main as research
 from post_to_threads import post_today_posts
 from analyze_posts import analyze
@@ -34,19 +35,19 @@ THRESHOLD_3 = 100000   # 10万で5→3投稿
 
 def get_mode():
     try:
-        with open("mode.json", "r") as f:
+        with open(data_path("mode.json"), "r") as f:
             return json.load(f).get("mode", "3posts")
     except:
         return "5posts"
 
 def set_mode(mode):
-    with open("mode.json", "w") as f:
+    with open(data_path("mode.json"), "w") as f:
         json.dump({"mode": mode, "updated": datetime.now().isoformat()}, f)
 
 def check_and_switch_mode():
     """インサイトをチェックして自動モード切替"""
     try:
-        with open("posts_data.json", "r", encoding="utf-8") as f:
+        with open(data_path("posts_data.json"), "r", encoding="utf-8") as f:
             posts = json.load(f)
         max_views = max([p.get("views", 0) for p in posts], default=0)
         current_mode = get_mode()

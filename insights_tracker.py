@@ -1,3 +1,4 @@
+from config import data_path
 """
 投稿インサイト時系列トラッカー
 投稿後 1時間・6時間・24時間のデータを収集して蓄積する
@@ -14,7 +15,7 @@ except Exception:
     pass
 
 token = os.environ["THREADS_ACCESS_TOKEN"]
-HISTORY_FILE = "insights_history.json"
+HISTORY_FILE = data_path("insights_history.json")
 METRICS = ["views", "likes", "replies", "reposts", "quotes", "shares", "clicks"]
 CHECK_HOURS = [1, 3, 6, 12, 24, 168]  # 168h = 1week
 
@@ -52,7 +53,7 @@ def run_insights_check():
     1時間・6時間・24時間後のタイミングでインサイトを取得する
     """
     try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "r", encoding="utf-8") as f:
             data = json.load(f)
     except:
         return

@@ -1,3 +1,4 @@
+from config import data_path
 import requests
 import json
 import os
@@ -49,7 +50,7 @@ def create_post(text):
 def post_today_posts():
     """today_posts.json の投稿を1本だけ投稿する（スケジューラーから呼ばれる）"""
     try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "r", encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError:
         print("❌ today_posts.json が見つかりません。先にリサーチを実行してください。")
@@ -87,7 +88,7 @@ def post_today_posts():
             "timestamp": datetime.now().isoformat()
         })
 
-        with open("today_posts.json", "w", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
         print(f"残り {len(unposted) - 1} 本")

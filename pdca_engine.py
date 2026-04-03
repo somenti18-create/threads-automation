@@ -8,6 +8,7 @@ import json
 import os
 import anthropic
 from datetime import datetime, timedelta
+from config import data_path, ensure_data_file
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -16,8 +17,8 @@ except Exception:
 
 token = os.environ["THREADS_ACCESS_TOKEN"]
 user_id = "34788313010783679"
-PDCA_LOG = "pdca_log.json"
-HYPOTHESIS_LOG = "hypothesis_log.json"
+PDCA_LOG = data_path("pdca_log.json")
+HYPOTHESIS_LOG = data_path("hypothesis_log.json")
 
 _claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
@@ -111,7 +112,7 @@ def analyze_and_generate_hypothesis(posts_with_insights):
     type_map = {}
     variant_map = {}  # post_id → "skills" or "no_skills"
     try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "r", encoding="utf-8") as f:
             today = json.load(f)
             for entry in today.get("log", []):
                 for p in today.get("posts", []):
@@ -375,7 +376,7 @@ def tag_post_to_hypothesis(hypothesis_id, post_id):
 def evaluate_hypotheses():
     """十分なデータが集まった仮説を評価してvalidated/rejectedに更新"""
     try:
-        with open("insights_history.json", "r", encoding="utf-8") as f:
+        with open(data_path("insights_history.json"), "r", encoding="utf-8") as f:
             insights = json.load(f)
     except:
         return
@@ -543,7 +544,7 @@ def update_writing_skills(analysis_text):
         return
 
     try:
-        with open("writing_skills.json", "r", encoding="utf-8") as f:
+        with open(ensure_data_file("writing_skills.json"), "r", encoding="utf-8") as f:
             skills = json.load(f)
         existing_rules = skills.get("rules", [])
     except:
@@ -586,7 +587,7 @@ JSONのみ出力してください。"""
             return
         skills["rules"] = new_rules
         skills["updated"] = datetime.now().strftime("%Y-%m-%d")
-        with open("writing_skills.json", "w", encoding="utf-8") as f:
+        with open(ensure_data_file("writing_skills.json"), "w", encoding="utf-8") as f:
             json.dump(skills, f, ensure_ascii=False, indent=2)
         print(f"✅ writing_skills更新（検証済み仮説{len(validated)}件反映）")
     except Exception as e:
