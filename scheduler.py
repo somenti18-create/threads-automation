@@ -140,7 +140,7 @@ def setup_schedule():
 def ensure_today_posts():
     """起動時にtoday_posts.jsonが空なら即生成（デプロイ後の復旧用）"""
     try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
+        with open(data_path("today_posts.json"), "r", encoding="utf-8") as f:
             data = json.load(f)
         today = datetime.now().strftime("%Y-%m-%d")
         if data.get("date") == today and data.get("posts"):

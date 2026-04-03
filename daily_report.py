@@ -38,7 +38,7 @@ def get_today_posts_with_insights():
     # 前日分をyesterday_posts.jsonから読む
     for fname in ("yesterday_posts.json", "today_posts.json"):
         try:
-            with open(fname, "r", encoding="utf-8") as f:
+            with open(data_path(fname), "r", encoding="utf-8") as f:
                 data = json.load(f)
             if data.get("log"):  # 投稿済みデータがあるものを使う
                 break
