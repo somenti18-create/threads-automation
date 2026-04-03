@@ -107,26 +107,44 @@ def analyze_and_generate_hypothesis(posts_with_insights):
     top = posts_with_insights[:3]
     bottom = posts_with_insights[-3:]
 
-    # today_posts.jsonからタイプ情報を取得
+    # today_posts.jsonからタイプ情報・variantを取得
     type_map = {}
+    variant_map = {}  # post_id → "skills" or "no_skills"
     try:
         with open("today_posts.json", "r", encoding="utf-8") as f:
             today = json.load(f)
             for entry in today.get("log", []):
                 for p in today.get("posts", []):
                     if p["index"] == entry.get("index"):
-                        type_map[entry.get("post_id", "")] = p.get("label", "不明")
+                        pid = entry.get("post_id", "")
+                        type_map[pid] = p.get("label", "不明")
+                        variant_map[pid] = p.get("variant", "skills")
     except:
         pass
 
     top_text = "\n---\n".join([
-        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
+        f"【{type_map.get(p['id'], '不明')}】[{variant_map.get(p['id'], '?')}] {p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
         for p in top
     ])
     bottom_text = "\n---\n".join([
-        f"【{type_map.get(p['id'], '不明')}】{p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
+        f"【{type_map.get(p['id'], '不明')}】[{variant_map.get(p['id'], '?')}] {p['text'][:200]}\n【スコア】views:{p['views']} likes:{p['likes']} replies:{p['replies']} reposts:{p['reposts']} 問い合わせリプ:{p.get('inquiry_count', 0)}"
         for p in bottom
     ])
+
+    # A/Bテスト: skills vs no_skills の平均views計算
+    skills_posts = [p for p in posts_with_insights if variant_map.get(p["id"]) == "skills"]
+    no_skills_posts = [p for p in posts_with_insights if variant_map.get(p["id"]) == "no_skills"]
+    skills_avg_views = sum(p["views"] for p in skills_posts) / len(skills_posts) if skills_posts else 0
+    no_skills_avg_views = sum(p["views"] for p in no_skills_posts) / len(no_skills_posts) if no_skills_posts else 0
+    skills_avg_eng = sum(p["engagement_score"] for p in skills_posts) / len(skills_posts) if skills_posts else 0
+    no_skills_avg_eng = sum(p["engagement_score"] for p in no_skills_posts) / len(no_skills_posts) if no_skills_posts else 0
+
+    ab_summary = f"""
+【A/Bテスト結果: skillsあり vs skillsなし（Claude素）】
+- skillsあり（奇数スロット）: {len(skills_posts)}本 / 平均views: {skills_avg_views:.0f} / 平均engagement: {skills_avg_eng:.1f}
+- skillsなし・Claude素（偶数スロット）: {len(no_skills_posts)}本 / 平均views: {no_skills_avg_views:.0f} / 平均engagement: {no_skills_avg_eng:.1f}
+- 差分: {"skillsあり" if skills_avg_views >= no_skills_avg_views else "skillsなし"} が平均 {abs(skills_avg_views - no_skills_avg_views):.0f} views 上回っている
+"""
 
     # 時系列インサイトサマリーと各種分析を取得
     try:
@@ -168,9 +186,10 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 {weekday_analysis if weekday_analysis else ""}
 {charcount_analysis if charcount_analysis else ""}
 {follower_trend if follower_trend else ""}
-
+{ab_summary}
 
 【エンゲージメント上位の投稿】
+（各投稿の末尾に [skills] または [no_skills] タグあり）
 {top_text}
 
 【エンゲージメント下位の投稿】
@@ -185,10 +204,10 @@ def analyze_and_generate_hypothesis(posts_with_insights):
 - 伸びた理由（上位投稿の共通点）
 - 伸びなかった理由（下位投稿の問題点）
 
-## コンサル型 vs 実験者型の比較
-- コンサル型の平均エンゲージメント
-- 実験者型の平均エンゲージメント
-- 今どちらが伸びているか・なぜか
+## A/Bテスト分析: skillsあり vs Claude素
+- skillsありの傾向（何が良かった・悪かった）
+- Claude素の傾向（何が良かった・悪かった）
+- 今後どちらを使うべきか、あるいは組み合わせ方の提案
 
 ## 過去仮説の検証
 （過去の仮説が正しかったか、間違いだったかを評価）

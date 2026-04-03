@@ -304,8 +304,11 @@ def scrape_threads(keyword, max_posts=8):
         print(f"⚠️ スクレイピングエラー ({keyword}): {e}")
         return []
 
-def generate_post_from_research(research_posts, post_index, post_type_override=None, hypothesis=None):
-    """リサーチ結果を元にClaudeで投稿文を生成"""
+def generate_post_from_research(research_posts, post_index, post_type_override=None, hypothesis=None, use_skills=True):
+    """リサーチ結果を元にClaudeで投稿文を生成
+    use_skills=True  → writing_skills.json + PDCA指示あり（A variant）
+    use_skills=False → プロフィール＋スタイル指示のみ（B variant / Claude生素）
+    """
     post_type_info = post_type_override if post_type_override else POST_TYPES[post_index % len(POST_TYPES)]
     style = f"【{post_type_info['label']}】{post_type_info['description']}"
 
@@ -316,17 +319,22 @@ def generate_post_from_research(research_posts, post_index, post_type_override=N
     if hypothesis:
         hyp_section = f"\n\n【今回検証する仮説】\n{hypothesis['content']}\n（この仮説を意識した投稿を作ること）"
     pdca_instructions = pdca_instructions_raw + hyp_section if pdca_instructions_raw else hyp_section
-    pdca_section = f"""
+
+    if use_skills:
+        pdca_section = f"""
 【PDCAからの指示（必ず守ること）】
 {pdca_instructions}
 """ if pdca_instructions else ""
-
-    # ライティングスキルを取得
-    writing_skills = get_writing_skills()
-    skills_section = f"""
+        # ライティングスキルを取得
+        writing_skills = get_writing_skills()
+        skills_section = f"""
 【蓄積されたライティングルール（必ず守ること）】
 {writing_skills}
 """ if writing_skills else ""
+    else:
+        # skills なし：PDCAもスキルも渡さない（Claudeの素の判断で生成）
+        pdca_section = ""
+        skills_section = ""
 
     if research_posts:
         samples = "\n---\n".join([p["text"] for p in research_posts[:5]])
@@ -390,10 +398,15 @@ def main(post_count=3):
     generated = []
 
     # 時間帯スロット順に生成（10投稿=全スロット順・3投稿=先頭3スロット）
+    # A/Bテスト: 奇数スロット(1,3,5,7,9本目)=skillsあり / 偶数スロット(2,4,6,8,10本目)=skillsなし
     for i in range(post_count):
         post_type_info = POST_TYPES_BY_SLOT[i % len(POST_TYPES_BY_SLOT)]
+        use_skills = (i % 2 == 0)  # 0-indexed: 0,2,4,6,8 → skills / 1,3,5,7,9 → no_skills
+        variant = "skills" if use_skills else "no_skills"
+
         post_text, used_hypothesis = generate_post_from_research(
-            all_posts, i, post_type_override=post_type_info, hypothesis=current_hypothesis
+            all_posts, i, post_type_override=post_type_info,
+            hypothesis=current_hypothesis, use_skills=use_skills
         )
 
         if post_text:
@@ -401,12 +414,13 @@ def main(post_count=3):
                 "index": i + 1,
                 "type": post_type_info["type"],
                 "label": post_type_info["label"],
+                "variant": variant,
                 "text": post_text
             }
             if used_hypothesis:
                 entry["hypothesis_id"] = used_hypothesis["id"]
             generated.append(entry)
-            print(f"【投稿 {i+1}/{post_count} - {post_type_info['label']}】")
+            print(f"【投稿 {i+1}/{post_count} - {post_type_info['label']} [{variant}]】")
             print(post_text)
             print("-" * 40)
 
