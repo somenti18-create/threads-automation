@@ -57,7 +57,8 @@ def log_insight(record: dict):
         headers = [
             "計測日時", "投稿ID", "投稿テキスト", "投稿タイプ", "文字数",
             "投稿日時(JST)", "JST時", "曜日", "経過時間(h)",
-            "views", "likes", "replies", "reposts", "quotes", "shares", "clicks"
+            "views", "likes", "replies", "reposts", "quotes", "shares", "clicks",
+            "variant", "hypothesis_id"
         ]
         ws = _get_or_create_sheet(sh, "インサイト履歴", headers)
 
@@ -78,6 +79,8 @@ def log_insight(record: dict):
             record.get("quotes", 0),
             record.get("shares", 0),
             record.get("clicks", 0),
+            record.get("variant", ""),
+            record.get("hypothesis_id", ""),
         ]
         ws.append_row(row)
         print(f"📊 スプシ書き込み: {record.get('post_text','')[:20]}... {record.get('hours')}h後")

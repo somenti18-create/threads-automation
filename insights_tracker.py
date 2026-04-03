@@ -92,13 +92,17 @@ def run_insights_check():
             if (post_id, check_hour) in history_ids:
                 continue
 
-            # 投稿タイプを取得
+            # 投稿タイプ・variant・hypothesis_idを取得
             post_type = ""
             post_char_count = 0
+            variant = ""
+            hypothesis_id = ""
             for p in posts:
                 if p["index"] == entry.get("index"):
                     post_type = p.get("label", "")
                     post_char_count = len(p.get("text", ""))
+                    variant = p.get("variant", "")
+                    hypothesis_id = p.get("hypothesis_id", "")
                     break
 
             # 投稿時間帯・曜日
@@ -118,6 +122,8 @@ def run_insights_check():
                 "weekday": weekday,
                 "hours": check_hour,
                 "measured_at": now.isoformat(),
+                "variant": variant,
+                "hypothesis_id": hypothesis_id,
                 **stats
             }
             history.append(record)
