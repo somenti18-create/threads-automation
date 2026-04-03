@@ -134,8 +134,8 @@ def run_insights_check():
             try:
                 from sheets_logger import log_insight
                 log_insight(record)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"⚠️ Sheets書き込みエラー: {e}")
 
     if updated:
         save_history(history)
