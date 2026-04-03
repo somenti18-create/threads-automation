@@ -24,7 +24,7 @@ _claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 def _call_claude(prompt):
     msg = _claude.messages.create(
         model="claude-opus-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     )
     return msg.content[0].text.strip()

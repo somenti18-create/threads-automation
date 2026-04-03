@@ -32,11 +32,18 @@ def _call_claude(prompt):
     return msg.content[0].text.strip()
 
 def get_today_posts_with_insights():
-    """今日投稿した内容とインサイトを取得"""
-    try:
-        with open("today_posts.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except:
+    """前日投稿した内容とインサイトを取得（朝レポートはyesterday_posts.jsonを優先）"""
+    # 朝レポートはPDCAでtoday_posts.jsonがリセットされた後に走るため
+    # 前日分をyesterday_posts.jsonから読む
+    for fname in ("yesterday_posts.json", "today_posts.json"):
+        try:
+            with open(fname, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("log"):  # 投稿済みデータがあるものを使う
+                break
+        except:
+            data = None
+    if not data:
         return []
 
     log = data.get("log", [])

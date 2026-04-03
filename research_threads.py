@@ -424,6 +424,16 @@ def main(post_count=3):
             print(post_text)
             print("-" * 40)
 
+    # 前日分をyesterday_posts.jsonに退避（朝レポート用）
+    try:
+        with open("today_posts.json", "r", encoding="utf-8") as f:
+            prev = json.load(f)
+        if prev.get("log"):  # 投稿済みデータがある場合のみ退避
+            with open("yesterday_posts.json", "w", encoding="utf-8") as f:
+                json.dump(prev, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
     # 保存（前日分をリセット）
     output = {
         "date": datetime.now().strftime("%Y-%m-%d"),
